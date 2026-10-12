@@ -10,13 +10,15 @@ class Service {
     required this.name,
     required this.type,
     required this.port,
+    this.host,
     this.txt,
     this.addresses,
   });
 
   final String name;
   final String type;
-  final int port;
+  final int? port;
+  final String? host;
   final Map<String, Uint8List>? txt;
   final List<InternetAddress>? addresses;
 }
@@ -37,7 +39,10 @@ Future<void> unregister(Registration registration) async {}
 
 Future<Discovery> startDiscovery(
   String serviceType, {
+  bool autoResolve = true,
   IpLookupType? ipLookupType,
 }) async => Discovery();
 
 Future<void> stopDiscovery(Discovery discovery) async {}
+
+Future<Service> resolve(Service service) async => service;

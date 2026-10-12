@@ -30,6 +30,8 @@ class LanController extends ChangeNotifier with WidgetsBindingObserver {
 
   static LanController? current;
   static const serviceType = '_zgj-link._tcp';
+  static final bool _desktop =
+      Platform.isWindows || Platform.isMacOS || Platform.isLinux;
   final AppRepository repository;
   final LocalStore store;
   final String kind;
@@ -61,8 +63,18 @@ class LanController extends ChangeNotifier with WidgetsBindingObserver {
   Timer? _urgent;
   nsd.Discovery? _discovery;
   nsd.Registration? _registration;
+  bool _publishing = false;
+  DateTime _registerAt = DateTime(2000);
+  DateTime _rescanAt = DateTime(2000);
   final Map<String, LanPeer> _manualPeers = {};
+  final Map<String, LanPeer> _unresolvedPeers = {};
+  final Map<String, nsd.Service> _resolvedServices = {};
+  final Set<String> _resolveFailed = {};
+  final Set<String> _resolving = {};
   List<LanPeer> _peers = [];
+  int _dropped = 0;
+  int _unresolved = 0;
+  String _scanError = '';
   final Set<String> _syncRequests = {};
   final Set<String> _playRequests = {};
   _LanIncomingSync? _incomingSync;
@@ -285,7 +297,9 @@ class LanController extends ChangeNotifier with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final foreground = state == AppLifecycleState.resumed;
+    final foreground =
+        state == AppLifecycleState.resumed ||
+        (state == AppLifecycleState.inactive && _desktop);
     if (foreground == _foreground) return;
     _foreground = foreground;
     _storeChanged();
@@ -315,6 +329,17 @@ class LanController extends ChangeNotifier with WidgetsBindingObserver {
     _syncTicket++;
     _peers = [];
     _manualPeers.clear();
+    _unresolvedPeers.clear();
+    _resolvedServices.clear();
+    _resolveFailed.clear();
+    _resolving.clear();
+    _dropped = 0;
+    _unresolved = 0;
+    _scanError = '';
+    _publishing = false;
+    _registerAt = DateTime(2000);
+    _rescanAt = DateTime(2000);
+    discoveryMessage = '';
     _gather?.cancel();
     _urgent?.cancel();
     if (oldGeneration.isNotEmpty) {
@@ -354,8 +379,18 @@ class LanController extends ChangeNotifier with WidgetsBindingObserver {
     error = null;
     discoveryMessage = '';
     unawaited(_poll(run, _generation));
+    if (_disposed || run != _run) return;
+    await rescan();
+    if (_disposed || run != _run) return;
+    await _publish();
+  }
+
+  Future<void> _publish() async {
+    if (_disposed || _registration != null || _publishing) return;
+    final run = _run;
+    _publishing = true;
     try {
-      final registration = await nsd.register(
+      final pending = nsd.register(
         nsd.Service(
           name: 'Zgj-' + local!.id.substring(0, 12),
           type: serviceType,
@@ -373,16 +408,18 @@ class LanController extends ChangeNotifier with WidgetsBindingObserver {
           },
         ),
       );
+      final registration = await pending.timeout(const Duration(seconds: 10));
       if (_disposed || run != _run) {
-        await nsd.unregister(registration);
+        await nsd.unregister(registration).catchError((Object _) {});
         return;
       }
       _registration = registration;
     } catch (_) {
-      discoveryMessage = '自动发现暂不可用，可用下方本机地址手动连接';
+    } finally {
+      _publishing = false;
     }
     if (_disposed || run != _run) return;
-    await rescan();
+    _syncDiscoveryMessage();
     _notify();
   }
 
@@ -397,20 +434,24 @@ class LanController extends ChangeNotifier with WidgetsBindingObserver {
     }
     _scanStarted = DateTime.now();
     _retryAt = DateTime(2000);
+    _dropped = 0;
+    _unresolved = 0;
+    _scanError = '';
+    _resolvedServices.clear();
+    _resolveFailed.clear();
     try {
-      final discovery = await nsd.startDiscovery(
-        serviceType,
-        ipLookupType: nsd.IpLookupType.any,
-      );
+      final pending = nsd.startDiscovery(serviceType, autoResolve: false);
+      final discovery = await pending.timeout(const Duration(seconds: 10));
       if (_disposed || run != _run) {
-        await nsd.stopDiscovery(discovery);
+        await nsd.stopDiscovery(discovery).catchError((Object _) {});
         return;
       }
       _discovery = discovery;
       discovery.addListener(_discovered);
       _discovered();
     } catch (_) {
-      discoveryMessage = '未能自动发现设备。请检查局域网权限，或输入对方的本机地址';
+      _scanError = '未能自动发现设备。请检查局域网权限，或输入对方的本机地址';
+      _syncDiscoveryMessage();
       _notify();
     }
     _gather?.cancel();
@@ -420,30 +461,51 @@ class LanController extends ChangeNotifier with WidgetsBindingObserver {
   void _discovered() {
     final map = <String, LanPeer>{..._manualPeers};
     final conflicted = <String>{};
+    final unresolved = <String, LanPeer>{};
+    final hosts = <String, String>{};
+    final pending = <nsd.Service>[];
     for (final service in _discovery?.services.take(128) ?? <nsd.Service>[]) {
+      final key = _serviceKey(service);
+      final found = _resolvedServices[key] ?? service;
+      if (found.port == null || found.txt == null) {
+        if (!_resolvedServices.containsKey(key) && !_resolveFailed.contains(key))
+          pending.add(service);
+        continue;
+      }
       try {
-        String text(String key) =>
-            utf8.decode(service.txt?[key] ?? [], allowMalformed: false);
-        final addresses = <String>[];
-        for (final address in service.addresses ?? <InternetAddress>[]) {
-          final host = address.address;
-          addresses.add(
-            host.contains(':')
-                ? '[$host]:' + service.port.toString()
-                : '$host:' + service.port.toString(),
-          );
+        final txt = found.txt ?? const <String, Uint8List>{};
+        String text(String field) =>
+            utf8.decode(txt[field] ?? const <int>[], allowMalformed: false);
+        if (!text('caps').split(',').contains('sync')) {
+          _dropped++;
+          continue;
         }
-        if (addresses.isEmpty || text('caps') != 'sync,play') continue;
+        final ranked = <MapEntry<int, String>>[];
+        for (final address in found.addresses ?? const <InternetAddress>[]) {
+          final rank = _addressRank(address);
+          if (rank != null)
+            ranked.add(MapEntry(rank, _addressText(address, found.port!)));
+        }
         final peer = LanPeer.fromJson({
           'deviceId': text('id'),
           'name': text('name'),
           'pin': text('pin'),
           'kind': text('kind'),
-          'port': service.port,
+          'port': found.port,
           'protocol': int.tryParse(text('v')),
-          'addresses': addresses,
+          'addresses': _rankedAddresses(ranked),
         });
         if (peer.id == local?.id) continue;
+        final host = _trimHost(found.host);
+        if (peer.addresses.isEmpty) {
+          if (host.isEmpty) {
+            _dropped++;
+            continue;
+          }
+          unresolved[peer.id] = peer;
+          hosts[peer.id] = host;
+          continue;
+        }
         final previous = map[peer.id];
         if (previous != null && previous.pin != peer.pin) {
           conflicted.add(peer.id);
@@ -453,17 +515,208 @@ class LanController extends ChangeNotifier with WidgetsBindingObserver {
           ...?previous?.addresses,
           ...peer.addresses,
         ]);
-      } catch (_) {}
+      } catch (_) {
+        _dropped++;
+      }
     }
     for (final id in conflicted) {
       map.remove(id);
     }
+    _unresolvedPeers.clear();
+    _unresolvedPeers.addAll(unresolved);
     _peers = map.values.toList()..sort((a, b) => a.name.compareTo(b.name));
+    _syncDiscoveryMessage();
     _notify();
-    if (DateTime.now().difference(_scanStarted) >= const Duration(seconds: 3)) {
-      _gather?.cancel();
-      _gather = Timer(const Duration(milliseconds: 500), () => _autoConnect());
+    for (final service in pending) {
+      unawaited(_resolveService(service));
     }
+    for (final peer in unresolved.values) {
+      unawaited(_resolvePeer(peer, hosts[peer.id]!));
+    }
+    _scheduleAutoConnect();
+  }
+
+  String _serviceKey(nsd.Service service) => service.name + '|' + service.type;
+
+  String _trimHost(String? value) {
+    final host = value?.trim() ?? '';
+    if (host.isEmpty || host.length > 160) return '';
+    return host.endsWith('.') ? host.substring(0, host.length - 1) : host;
+  }
+
+  String _addressText(InternetAddress address, int port) {
+    final host = address.address;
+    return host.contains(':') ? '[$host]:$port' : '$host:$port';
+  }
+
+  int? _addressRank(InternetAddress address) {
+    final host = address.address;
+    if (address.type == InternetAddressType.IPv4) {
+      final parts = host.split('.');
+      if (parts.length != 4) return null;
+      final values = <int>[];
+      for (final part in parts) {
+        final value = int.tryParse(part);
+        if (value == null || value < 0 || value > 255) return null;
+        values.add(value);
+      }
+      if (values[0] == 10) return 1;
+      if (values[0] == 172 && values[1] >= 16 && values[1] <= 31) return 1;
+      if (values[0] == 192 && values[1] == 168) return 1;
+      if (values[0] == 169 && values[1] == 254) return 3;
+      return null;
+    }
+    final value = host.toLowerCase();
+    if (value.startsWith('fe8') ||
+        value.startsWith('fe9') ||
+        value.startsWith('fea') ||
+        value.startsWith('feb'))
+      return 4;
+    if (value.startsWith('fc') || value.startsWith('fd')) return 5;
+    return null;
+  }
+
+  List<String> _rankedAddresses(List<MapEntry<int, String>> values) {
+    final ranks = <String, int>{};
+    for (final entry in values) {
+      final rank = ranks[entry.value];
+      if (rank == null || entry.key < rank) ranks[entry.value] = entry.key;
+    }
+    final entries = ranks.entries.toList();
+    entries.sort((a, b) {
+      final order = a.value.compareTo(b.value);
+      return order != 0 ? order : a.key.compareTo(b.key);
+    });
+    return [for (final entry in entries) entry.key];
+  }
+
+  Future<void> _resolveService(nsd.Service service) async {
+    final key = _serviceKey(service);
+    final run = _run;
+    if (_disposed ||
+        _resolvedServices.containsKey(key) ||
+        _resolveFailed.contains(key) ||
+        !_resolving.add(key))
+      return;
+    try {
+      final resolving = nsd.resolve(service);
+      final resolved = await resolving.timeout(const Duration(seconds: 6));
+      if (_disposed || run != _run) return;
+      _resolvedServices[key] = resolved;
+    } catch (_) {
+      if (_disposed || run != _run) return;
+      _resolveFailed.add(key);
+      _unresolved++;
+    } finally {
+      _resolving.remove(key);
+    }
+    if (_disposed || run != _run) return;
+    _discovered();
+  }
+
+  Future<List<MapEntry<int, String>>> _lookup(String host, int port) async {
+    try {
+      final lookup = InternetAddress.lookup(host);
+      final found = await lookup.timeout(const Duration(seconds: 4));
+      final values = <MapEntry<int, String>>[];
+      for (final address in found) {
+        final rank = _addressRank(address);
+        if (rank != null)
+          values.add(MapEntry(rank, _addressText(address, port)));
+      }
+      return values;
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> _resolvePeer(LanPeer peer, String host) async {
+    final run = _run;
+    if (_disposed ||
+        _resolveFailed.contains(peer.id) ||
+        !_resolving.add(peer.id))
+      return;
+    var usable = false;
+    try {
+      final candidates = <String>{host};
+      if (!host.toLowerCase().endsWith('.local'))
+        candidates.add(host + '.local');
+      final label = host.split('.').first;
+      if (label.isNotEmpty) candidates.add(label);
+      final lists = await Future.wait([
+        for (final candidate in candidates) _lookup(candidate, peer.port),
+      ]);
+      if (_disposed || run != _run) return;
+      final values = <MapEntry<int, String>>[];
+      for (final list in lists) {
+        values.addAll(list);
+      }
+      final addresses = _rankedAddresses(values);
+      if (addresses.isEmpty) {
+        _resolveFailed.add(peer.id);
+        _unresolved++;
+      } else {
+        final peers = [..._peers];
+        final index = peers.indexWhere((entry) => entry.id == peer.id);
+        if (index >= 0) {
+          peers[index] = peers[index].withAddresses([
+            ...peers[index].addresses,
+            ...addresses,
+          ]);
+          usable = true;
+        } else if (_unresolvedPeers[peer.id]?.pin == peer.pin) {
+          peers.add(peer.withAddresses(addresses));
+          usable = true;
+        }
+        if (usable) {
+          _unresolvedPeers.remove(peer.id);
+          _peers = peers..sort((a, b) => a.name.compareTo(b.name));
+        }
+      }
+    } finally {
+      _resolving.remove(peer.id);
+    }
+    if (_disposed || run != _run) return;
+    _syncDiscoveryMessage();
+    _notify();
+    if (usable) _scheduleAutoConnect();
+  }
+
+  void _scheduleAutoConnect() {
+    if (DateTime.now().difference(_scanStarted) < const Duration(seconds: 3))
+      return;
+    _gather?.cancel();
+    _gather = Timer(const Duration(milliseconds: 300), () => _autoConnect());
+  }
+
+  void _syncDiscoveryMessage() {
+    if (_peers.isNotEmpty) {
+      discoveryMessage = '';
+    } else if (_unresolved > 0) {
+      discoveryMessage = '已搜到 $_unresolved 台设备，但未能解析出局域网地址；可输入对方的本机地址手动连接';
+    } else if (_unresolvedPeers.isNotEmpty) {
+      discoveryMessage = '已搜到设备，正在解析局域网地址…';
+    } else if (_dropped > 0) {
+      discoveryMessage = '已搜到局域网设备，但对方广播信息不完整或版本不一致；可输入对方的本机地址手动连接';
+    } else if (_scanError.isNotEmpty) {
+      discoveryMessage = _scanError;
+    } else if (_registration == null) {
+      discoveryMessage = '本机尚未发布到局域网；可输入对方的本机地址手动连接';
+    } else {
+      discoveryMessage = '';
+    }
+  }
+
+  Future<void> _recoverScan() async {
+    final now = DateTime.now();
+    if (_registration == null && !now.isBefore(_registerAt)) {
+      _registerAt = now.add(const Duration(seconds: 15));
+      await _publish();
+    }
+    if (_peers.isNotEmpty || _resolving.isNotEmpty || now.isBefore(_rescanAt))
+      return;
+    _rescanAt = now.add(const Duration(seconds: 20));
+    await rescan();
   }
 
   Future<LanPeer> probe(String address) async {
@@ -897,6 +1150,8 @@ class LanController extends ChangeNotifier with WidgetsBindingObserver {
     }
     await _expireIncomingPlayback();
     if (connection == null) {
+      await _recoverScan();
+      if (_disposed || !receiving) return;
       await _autoConnect();
       return;
     }

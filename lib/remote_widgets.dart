@@ -1002,59 +1002,64 @@ class _TelevisionSearchDialogState extends State<TelevisionSearchDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: Text(widget.title),
-    content: SizedBox(
-      width: 460,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * .6,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SearchInput(
-                autofocus: true,
-                controller: _controller,
-                hint: '输入剧名',
-                suggestions: widget.suggestions,
-                onCancel: widget.onCancel,
-                onSearch: _close,
-              ),
-              if (widget.recentSearches.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final query in widget.recentSearches)
-                      ActionChip(
-                        label: Text(query),
-                        avatar: const Icon(Icons.history_rounded, size: 16),
-                        onPressed: () => _close(query),
-                      ),
-                  ],
+  Widget build(BuildContext context) {
+    final television = AppLayout.isTelevision(context);
+    return AlertDialog(
+      title: Text(widget.title),
+      content: SizedBox(
+        width: 460,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * .6,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SearchInput(
+                  autofocus: true,
+                  controller: _controller,
+                  hint: '输入剧名',
+                  suggestions: widget.suggestions,
+                  onCancel: widget.onCancel,
+                  onSearch: _close,
                 ),
+                if (widget.recentSearches.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final query in widget.recentSearches)
+                        ActionChip(
+                          label: Text(query),
+                          avatar: const Icon(Icons.history_rounded, size: 16),
+                          onPressed: () => _close(query),
+                        ),
+                    ],
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
-    ),
-    actions: [
-      TextButton(
-        onPressed: () => _close(),
-        child: const Text('取消'),
-      ),
-      TextButton(
-        onPressed: () => _close(''),
-        child: const Text('清空'),
-      ),
-      FilledButton(
-        onPressed: () => _close(_controller.text.trim()),
-        child: const Text('搜索'),
-      ),
-    ],
-  );
+      actions: [
+        TextButton(
+          onPressed: () => _close(),
+          child: const Text('取消'),
+        ),
+        if (!television) ...[
+          TextButton(
+            onPressed: () => _close(''),
+            child: const Text('清空'),
+          ),
+          FilledButton(
+            onPressed: () => _close(_controller.text.trim()),
+            child: const Text('搜索'),
+          ),
+        ],
+      ],
+    );
+  }
 }
