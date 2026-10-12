@@ -987,6 +987,14 @@ class TelevisionSearchDialog extends StatefulWidget {
 
 class _TelevisionSearchDialogState extends State<TelevisionSearchDialog> {
   late final _controller = TextEditingController(text: widget.initialValue);
+  bool _closed = false;
+
+  void _close([String? value]) {
+    if (_closed) return;
+    _closed = true;
+    Navigator.pop(context, value);
+  }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -1012,7 +1020,7 @@ class _TelevisionSearchDialogState extends State<TelevisionSearchDialog> {
                 hint: '输入剧名',
                 suggestions: widget.suggestions,
                 onCancel: widget.onCancel,
-                onSearch: (value) => Navigator.pop(context, value),
+                onSearch: _close,
               ),
               if (widget.recentSearches.isNotEmpty) ...[
                 const SizedBox(height: 16),
@@ -1024,7 +1032,7 @@ class _TelevisionSearchDialogState extends State<TelevisionSearchDialog> {
                       ActionChip(
                         label: Text(query),
                         avatar: const Icon(Icons.history_rounded, size: 16),
-                        onPressed: () => Navigator.pop(context, query),
+                        onPressed: () => _close(query),
                       ),
                   ],
                 ),
@@ -1036,15 +1044,15 @@ class _TelevisionSearchDialogState extends State<TelevisionSearchDialog> {
     ),
     actions: [
       TextButton(
-        onPressed: () => Navigator.pop(context),
+        onPressed: () => _close(),
         child: const Text('取消'),
       ),
       TextButton(
-        onPressed: () => Navigator.pop(context, ''),
+        onPressed: () => _close(''),
         child: const Text('清空'),
       ),
       FilledButton(
-        onPressed: () => Navigator.pop(context, _controller.text.trim()),
+        onPressed: () => _close(_controller.text.trim()),
         child: const Text('搜索'),
       ),
     ],

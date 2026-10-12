@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class SearchInput extends StatefulWidget {
   const SearchInput({
@@ -32,6 +34,15 @@ class _SearchInputState extends State<SearchInput> {
   int _generation = 0;
   bool _selected = false;
   final _cache = <String, List<String>>{};
+
+  static const _remoteConfirmKeys = <LogicalKeyboardKey>{
+    LogicalKeyboardKey.select,
+    LogicalKeyboardKey.gameButtonA,
+  };
+  static const _hardwareEnterKeys = <LogicalKeyboardKey>{
+    LogicalKeyboardKey.enter,
+    LogicalKeyboardKey.numpadEnter,
+  };
 
   void _cancel() {
     _timer?.cancel();
@@ -84,6 +95,28 @@ class _SearchInputState extends State<SearchInput> {
     return pending.future;
   }
 
+  void _confirm(String value, VoidCallback submitted) {
+    _selected = false;
+    submitted();
+    if (!_selected) _submit(value);
+  }
+
+  KeyEventResult _confirmKey(
+    KeyEvent event,
+    TextEditingController controller,
+    VoidCallback submitted,
+  ) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    final remote = _remoteConfirmKeys.contains(key);
+    final enter =
+        defaultTargetPlatform == TargetPlatform.android &&
+        _hardwareEnterKeys.contains(key);
+    if (!remote && !enter) return KeyEventResult.ignored;
+    _confirm(controller.text, submitted);
+    return KeyEventResult.handled;
+  }
+
   void _submit(String value) {
     _cancel();
     widget.controller.value = TextEditingValue(
@@ -133,43 +166,44 @@ class _SearchInputState extends State<SearchInput> {
         _selected = true;
         _submit(value);
       },
-      fieldViewBuilder: (context, controller, focus, submitted) => TextField(
-        controller: controller,
-        focusNode: focus,
-        autofocus: widget.autofocus,
-        textInputAction: TextInputAction.search,
-        onChanged: (value) {
-          widget.onChanged?.call(value);
-          setState(() {});
-        },
-        onSubmitted: (value) {
-          _selected = false;
-          submitted();
-          if (!_selected) _submit(value);
-        },
-        decoration: InputDecoration(
-          hintText: widget.hint,
-          prefixIcon: const Icon(Icons.search_rounded),
-          suffixIcon: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (controller.text.isNotEmpty)
+      fieldViewBuilder: (context, controller, focus, submitted) => Focus(
+        canRequestFocus: false,
+        skipTraversal: true,
+        onKeyEvent: (node, event) => _confirmKey(event, controller, submitted),
+        child: TextField(
+          controller: controller,
+          focusNode: focus,
+          autofocus: widget.autofocus,
+          textInputAction: TextInputAction.search,
+          onChanged: (value) {
+            widget.onChanged?.call(value);
+            setState(() {});
+          },
+          onSubmitted: (value) => _confirm(value, submitted),
+          decoration: InputDecoration(
+            hintText: widget.hint,
+            prefixIcon: const Icon(Icons.search_rounded),
+            suffixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (controller.text.isNotEmpty)
+                  IconButton(
+                    tooltip: '清空搜索',
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () {
+                      _cancel();
+                      controller.clear();
+                      widget.onChanged?.call('');
+                      setState(() {});
+                    },
+                  ),
                 IconButton(
-                  tooltip: '清空搜索',
-                  icon: const Icon(Icons.close_rounded),
-                  onPressed: () {
-                    _cancel();
-                    controller.clear();
-                    widget.onChanged?.call('');
-                    setState(() {});
-                  },
+                  tooltip: '搜索',
+                  icon: const Icon(Icons.arrow_forward_rounded),
+                  onPressed: () => _submit(controller.text),
                 ),
-              IconButton(
-                tooltip: '搜索',
-                icon: const Icon(Icons.arrow_forward_rounded),
-                onPressed: () => _submit(controller.text),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
