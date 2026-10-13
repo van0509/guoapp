@@ -15,6 +15,15 @@ KeyEventResult _remoteExit(VoidCallback? action, {bool handled = false}) {
   return KeyEventResult.handled;
 }
 
+/// 方向越界时的方向遍历：找不到目标返回 false，由上层继续处理该按键。
+bool remoteFocusInDirection(FocusNode node, TraversalDirection direction) {
+  final context = node.context;
+  if (context == null) return false;
+  final policy = FocusTraversalGroup.maybeOf(context);
+  if (policy == null) return false;
+  return policy.inDirection(node, direction);
+}
+
 /// 电视模式下为页面补齐初始焦点，避免进入页面后遥控器没有响应。
 void ensureTelevisionFocus(BuildContext context) {
   WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -178,6 +187,164 @@ class RemoteButton extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// 电视模式下的文本输入框：方向键可以离开输入框，一键清除按钮可被遥控器选中。
+/// 非电视模式保持原生输入框行为。
+class RemoteTextField extends StatefulWidget {
+  const RemoteTextField({
+    super.key,
+    required this.controller,
+    this.hintText,
+    this.prefixIcon,
+    this.clearTooltip = '清空',
+    this.textInputAction,
+    this.autofocus = false,
+    this.onChanged,
+    this.onSubmitted,
+    this.onExitUp,
+    this.onExitDown,
+    this.onExitLeft,
+    this.onExitRight,
+  });
+
+  final TextEditingController controller;
+  final String? hintText;
+  final Widget? prefixIcon;
+  final String clearTooltip;
+  final TextInputAction? textInputAction;
+  final bool autofocus;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+  final VoidCallback? onExitUp;
+  final VoidCallback? onExitDown;
+  final VoidCallback? onExitLeft;
+  final VoidCallback? onExitRight;
+
+  @override
+  State<RemoteTextField> createState() => _RemoteTextFieldState();
+}
+
+class _RemoteTextFieldState extends State<RemoteTextField> {
+  final _field = FocusNode(debugLabel: 'remote-text-field');
+  final _clear = FocusNode(debugLabel: 'remote-text-field-clear');
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_textChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant RemoteTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_textChanged);
+      widget.controller.addListener(_textChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_textChanged);
+    _clear.dispose();
+    _field.dispose();
+    super.dispose();
+  }
+
+  void _textChanged() {
+    if (mounted) setState(() {});
+  }
+
+  bool get _hasText => widget.controller.text.isNotEmpty;
+
+  void _clearText() {
+    widget.controller.clear();
+    widget.onChanged?.call('');
+    if (!_field.hasFocus && _field.context != null) {
+      _field.requestFocus();
+    }
+  }
+
+  KeyEventResult _leave(
+    FocusNode node,
+    TraversalDirection direction,
+    VoidCallback? exit,
+  ) {
+    if (exit != null) return _remoteExit(exit, handled: true);
+    return remoteFocusInDirection(node, direction)
+        ? KeyEventResult.handled
+        : KeyEventResult.ignored;
+  }
+
+  KeyEventResult _key(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+    final clearing = _clear.hasFocus;
+    if (!clearing && !_field.hasFocus) return KeyEventResult.ignored;
+    final anchor = clearing ? _clear : _field;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.arrowRight) {
+      if (!clearing && _hasText && _clear.context != null) {
+        _clear.requestFocus();
+        return KeyEventResult.handled;
+      }
+      return _leave(anchor, TraversalDirection.right, widget.onExitRight);
+    }
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      if (clearing && _field.context != null) {
+        _field.requestFocus();
+        return KeyEventResult.handled;
+      }
+      return _leave(anchor, TraversalDirection.left, widget.onExitLeft);
+    }
+    if (key == LogicalKeyboardKey.arrowUp) {
+      return _leave(anchor, TraversalDirection.up, widget.onExitUp);
+    }
+    if (key == LogicalKeyboardKey.arrowDown) {
+      return _leave(anchor, TraversalDirection.down, widget.onExitDown);
+    }
+    return KeyEventResult.ignored;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final television = AppLayout.isTelevision(context);
+    return Focus(
+      canRequestFocus: false,
+      skipTraversal: true,
+      onKeyEvent: television ? _key : null,
+      child: TextField(
+        controller: widget.controller,
+        focusNode: television ? _field : null,
+        autofocus: widget.autofocus,
+        textInputAction: widget.textInputAction,
+        onChanged: widget.onChanged,
+        onSubmitted: widget.onSubmitted,
+        decoration: InputDecoration(
+          hintText: widget.hintText,
+          prefixIcon: widget.prefixIcon,
+          suffixIcon: !_hasText
+              ? null
+              : television
+              ? RemoteTarget(
+                  focusNode: _clear,
+                  label: widget.clearTooltip,
+                  radius: 10,
+                  padding: const EdgeInsets.all(6),
+                  onPressed: _clearText,
+                  child: const Icon(Icons.close_rounded, size: 20),
+                )
+              : IconButton(
+                  tooltip: widget.clearTooltip,
+                  onPressed: _clearText,
+                  icon: const Icon(Icons.close_rounded),
+                ),
+        ),
+      ),
+    );
+  }
 }
 
 class RemoteGrid extends StatefulWidget {

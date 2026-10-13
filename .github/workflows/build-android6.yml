@@ -49,13 +49,15 @@ jobs:
           python scripts/prepare_android6_toolchain.py
           python scripts/prepare_android6_sources.py
       - name: Configure Android signing
-        run: python scripts/configure_signing.py
+        run: python scripts/configure_signing.py --require
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
       - run: python scripts/build_android6.py
+      - name: Verify APK signatures
+        run: python scripts/apk_signature.py dist/android6
       - name: Remove signing files
         if: always()
         run: python scripts/configure_signing.py --clean

@@ -57,6 +57,7 @@ android {
                 storePassword = requireNotNull(releaseProperties.getProperty("storePassword"))
                 keyAlias = requireNotNull(releaseProperties.getProperty("keyAlias"))
                 keyPassword = requireNotNull(releaseProperties.getProperty("keyPassword"))
+                storeType = releaseProperties.getProperty("storeType") ?: "JKS"
             }
         }
     }

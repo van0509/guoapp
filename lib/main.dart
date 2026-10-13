@@ -22,6 +22,7 @@ import 'package_smoke.dart';
 import 'lan_controller.dart';
 import 'player_route.dart';
 import 'recommendation_service.dart';
+import 'remote_widgets.dart';
 import 'player_screen.dart';
 import 'search_cache.dart';
 import 'storage_access.dart';
@@ -221,6 +222,32 @@ class _AppBootstrapState extends State<AppBootstrap>
   );
 }
 
+/// 电视模式下方向键的兜底：控件自己没接管时用方向遍历移出焦点，
+/// 避免输入框等控件把遥控器焦点困在原地。
+KeyEventResult _remoteArrowFallback(FocusNode node, KeyEvent event) {
+  if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+    return KeyEventResult.ignored;
+  }
+  final key = event.logicalKey;
+  final TraversalDirection direction;
+  if (key == LogicalKeyboardKey.arrowUp) {
+    direction = TraversalDirection.up;
+  } else if (key == LogicalKeyboardKey.arrowDown) {
+    direction = TraversalDirection.down;
+  } else if (key == LogicalKeyboardKey.arrowLeft) {
+    direction = TraversalDirection.left;
+  } else if (key == LogicalKeyboardKey.arrowRight) {
+    direction = TraversalDirection.right;
+  } else {
+    return KeyEventResult.ignored;
+  }
+  final focused = FocusManager.instance.primaryFocus;
+  if (focused == null) return KeyEventResult.ignored;
+  return remoteFocusInDirection(focused, direction)
+      ? KeyEventResult.handled
+      : KeyEventResult.ignored;
+}
+
 class DuanjuApp extends StatelessWidget {
   const DuanjuApp({
     super.key,
@@ -283,7 +310,12 @@ class DuanjuApp extends StatelessWidget {
                     ): ActivateIntent(),
                     SingleActivator(LogicalKeyboardKey.goBack): DismissIntent(),
                   },
-                  child: FocusTraversalGroup(child: child!),
+                  child: Focus(
+                    canRequestFocus: false,
+                    skipTraversal: true,
+                    onKeyEvent: tv ? _remoteArrowFallback : null,
+                    child: FocusTraversalGroup(child: child!),
+                  ),
                 ),
               ),
             ),

@@ -72,7 +72,7 @@ jobs:
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;28.2.13676358"
       - name: Configure Android signing
-        run: python scripts/configure_signing.py --edition ${{ matrix.edition }}
+        run: python scripts/configure_signing.py --edition ${{ matrix.edition }} ${{ github.event_name == 'push' && '--require' || '' }}
         env:
           ANDROID_HONGGUOJIAN_KEYSTORE_BASE64: ${{ secrets.ANDROID_HONGGUOJIAN_KEYSTORE_BASE64 }}
           ANDROID_HONGGUOJIAN_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_HONGGUOJIAN_KEYSTORE_PASSWORD }}
@@ -83,10 +83,14 @@ jobs:
           ANDROID_ZHENGUOJIAN_KEY_ALIAS: ${{ secrets.ANDROID_ZHENGUOJIAN_KEY_ALIAS }}
           ANDROID_ZHENGUOJIAN_KEY_PASSWORD: ${{ secrets.ANDROID_ZHENGUOJIAN_KEY_PASSWORD }}
       - run: python scripts/build_android.py ${{ matrix.arguments }}
+      - name: Verify APK signatures
+        if: github.event_name == 'push'
+        run: python scripts/apk_signature.py dist/android
       - name: Remove signing files
         if: always()
         run: python scripts/configure_signing.py --clean
       - name: Publish Android APK to GitHub Release
+        if: github.event_name != 'pull_request'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -130,6 +134,7 @@ jobs:
         run: echo "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - run: python scripts/build_windows.py ${{ matrix.arguments }}
       - name: Publish Windows packages to GitHub Release
+        if: github.event_name != 'pull_request'
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -173,6 +178,7 @@ jobs:
           cache: true
       - run: python3 scripts/build_ios.py ${{ matrix.arguments }}
       - name: Publish iOS app to GitHub Release
+        if: github.event_name != 'pull_request'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

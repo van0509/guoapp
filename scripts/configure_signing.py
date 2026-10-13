@@ -7,6 +7,7 @@ root = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
 parser.add_argument('--clean', action='store_true')
 parser.add_argument('--edition', choices=['hongguojian', 'zhenguojian'], default='hongguojian')
+parser.add_argument('--require', action='store_true', help='缺少签名 Secrets 时失败，不生成预览 APK')
 options = parser.parse_args()
 runner_temp = os.environ.get('RUNNER_TEMP')
 if not runner_temp:
@@ -25,6 +26,9 @@ values = [os.environ.get(edition_prefix + suffix, '') for suffix in suffixes]
 if options.edition == 'hongguojian' and not any(values):
     values = [os.environ.get('ANDROID_' + suffix, '') for suffix in suffixes]
 if not any(values):
+    if options.require:
+        raise SystemExit('缺少 Android 发布签名 Secrets：' + edition_prefix
+                         + 'KEYSTORE_BASE64 / KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD 必须全部配置。')
     print('未配置签名 Secrets：生成预览 APK；正式发布请配置固定签名。')
     raise SystemExit(0)
 if not all(values):
@@ -59,7 +63,7 @@ def escape(value):
 
 
 properties = {'storeFile': key_file.as_posix(), 'storePassword': values[1],
-              'keyAlias': values[2], 'keyPassword': values[3]}
+              'keyAlias': values[2], 'keyPassword': values[3], 'storeType': 'JKS'}
 properties_file.write_text(''.join(name + '=' + escape(value) + '\n'
                                 for name, value in properties.items()), encoding='ascii')
 properties_file.chmod(0o600)
