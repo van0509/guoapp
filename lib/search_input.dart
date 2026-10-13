@@ -44,11 +44,11 @@ class _SearchInputState extends State<SearchInput> {
   List<String> _suggestions = const [];
   final _cache = <String, List<String>>{};
 
-  static const _remoteConfirmKeys = <LogicalKeyboardKey>{
+  static final _remoteConfirmKeys = <LogicalKeyboardKey>{
     LogicalKeyboardKey.select,
     LogicalKeyboardKey.gameButtonA,
   };
-  static const _hardwareEnterKeys = <LogicalKeyboardKey>{
+  static final _hardwareEnterKeys = <LogicalKeyboardKey>{
     LogicalKeyboardKey.enter,
     LogicalKeyboardKey.numpadEnter,
   };

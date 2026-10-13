@@ -468,7 +468,8 @@ class LanController extends ChangeNotifier with WidgetsBindingObserver {
       final key = _serviceKey(service);
       final found = _resolvedServices[key] ?? service;
       if (found.port == null || found.txt == null) {
-        if (!_resolvedServices.containsKey(key) && !_resolveFailed.contains(key))
+        if (!_resolvedServices.containsKey(key) &&
+            !_resolveFailed.contains(key))
           pending.add(service);
         continue;
       }
@@ -536,7 +537,7 @@ class LanController extends ChangeNotifier with WidgetsBindingObserver {
     _scheduleAutoConnect();
   }
 
-  String _serviceKey(nsd.Service service) => service.name + '|' + service.type;
+  String _serviceKey(nsd.Service service) => '${service.name}|${service.type}';
 
   String _trimHost(String? value) {
     final host = value?.trim() ?? '';

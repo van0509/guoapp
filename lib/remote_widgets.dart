@@ -1045,15 +1045,9 @@ class _TelevisionSearchDialogState extends State<TelevisionSearchDialog> {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => _close(),
-          child: const Text('取消'),
-        ),
+        TextButton(onPressed: () => _close(), child: const Text('取消')),
         if (!television) ...[
-          TextButton(
-            onPressed: () => _close(''),
-            child: const Text('清空'),
-          ),
+          TextButton(onPressed: () => _close(''), child: const Text('清空')),
           FilledButton(
             onPressed: () => _close(_controller.text.trim()),
             child: const Text('搜索'),

@@ -779,6 +779,8 @@ go test -race ./...
 go test -race -ldflags="-X duanjuapp/native/core.buildAllSources=true" ./...
 ~~~
 
+Actions 的格式与静态分析步骤使用 `dart format --output=none --set-exit-if-changed` 和 `dart analyze`，本地复现需先执行 `flutter pub get`，让 `.dart_tool/package_config.json` 记录 `pubspec.yaml` 声明的 Dart `3.12` 语言版本，再运行上面两条命令；直接调用独立 Dart SDK 而不先取依赖会按更新的语言版本重新排版，产生大量与本仓库无关的差异。提交前本地跑通这两条命令可避免格式检查失败。
+
 合成媒体验证需要开发机安装 `ffmpeg` / `ffprobe`。测试覆盖权限隔离、备份校验、搜索防抖与旧结果、仅少数分集转码、CENC 解密换封装、Emby 元数据及删除原文件后的完整解码，不请求站源图片。
 
 Android 回归使用独立 `.debug` 包。连接并授权 USB 调试、保持设备解锁：
