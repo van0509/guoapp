@@ -1447,9 +1447,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               key: const ValueKey('live-tab'),
                               repository: _liveRepository,
                               store: _liveStore,
-                              greenMode: allSourcesEnabled
-                                  ? false
-                                  : widget.store.greenMode,
+                              greenMode: widget.store.greenMode,
                               onExitLeft: television
                                   ? () => _navKey.currentState?.focusCurrent()
                                   : null,

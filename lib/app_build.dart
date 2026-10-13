@@ -1,6 +1,6 @@
 const allSourcesEnabled = bool.fromEnvironment('ALL_SOURCES');
 const android6Compatibility = bool.fromEnvironment('ANDROID6_COMPAT');
-const liveActivationCode = 'Shineyue';
+const liveActivationCode = 'van0509';
 const _compatibilitySuffix = android6Compatibility ? '兼容版' : '';
 const appName = (allSourcesEnabled ? '真果鉴' : '红果鉴') + _compatibilitySuffix;
 const appSlug = allSourcesEnabled ? 'zhenguojian' : 'hongguojian';

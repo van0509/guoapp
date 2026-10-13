@@ -291,7 +291,7 @@ class LocalStore extends ChangeNotifier {
 
   bool get liveActivated =>
       allSourcesEnabled || (_bool('liveActivated') ?? false);
-  bool get canShowLive => allSourcesEnabled || liveActivated;
+  bool get canShowLive => !greenMode && (allSourcesEnabled || liveActivated);
 
   bool get autoExport =>
       !android6Compatibility && !locked && (_bool('autoExport') ?? false);
