@@ -7,7 +7,7 @@ root = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
 parser.add_argument('--clean', action='store_true')
 parser.add_argument('--edition', choices=['hongguojian', 'zhenguojian'], default='hongguojian')
-parser.add_argument('--require', action='store_true', help='缺少签名 Secrets 时失败，不生成预览 APK')
+parser.add_argument('--require', '--require-signing', action='store_true', help='缺少签名 Secrets 时失败，不生成预览 APK')
 options = parser.parse_args()
 runner_temp = os.environ.get('RUNNER_TEMP')
 if not runner_temp:

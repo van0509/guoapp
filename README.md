@@ -1,8 +1,8 @@
 # 红果鉴 / 真果鉴
 
-Flutter 多端独立短剧应用，原名“短剧库 APP”。站源请求、解析、下载和播放均在设备上完成，不依赖旧项目或自建服务。当前源码版本：**0.2.156+2169（未验证开发快照）**。本轮修复电视模式输入框困住遥控焦点的问题：追剧与历史记录页的搜索框、以及其余电视可达的输入框此前都会吃掉方向键，焦点进得去出不来，输入框末尾的一键清除按钮也无法用遥控器选中；现在输入框自己接管方向键（右移选中一键清除、左移回到输入框、上下按出口回调或方向遍历离开）并在应用根部为所有页面与弹窗补上方向键兜底。0.2.155 的直播入口分级与激活码变更、0.2.152 的电视模式搜索、0.2.151 的确认键提交、0.2.150 的 Android 6 独立兼容版构建入口、红果鉴与真果鉴独立 Android 包名和发布签名继续保留；完整主版本的直播、推荐与搜索缓存、剧库导入导出、播放器生命周期与玻璃界面、网络出口切换、屏幕常亮、观看统计、断点续传与新增站源解析等功能继续保留。
+Flutter 多端独立短剧应用，原名“短剧库 APP”。站源请求、解析、下载和播放均在设备上完成，不依赖旧项目或自建服务。当前源码版本：**0.2.157+2170（未验证开发快照）**。本轮同步上游红果接口修复，并把上游的发布签名修正并入本项目已有的签名校验方案：红果 App 播放器请求在既有 X-Gorgon / X-Khronos 之外补齐 X-Argus / X-Ladon 签名，播放响应同时兼容 JSON 与 Base64 JSON 编码的 `video_model` 和直接返回的扁平 `video_list`；红果官网回退解析改读 `protectedPlayback`、video_id / series_id 的多种字段名，并从 JSON-LD `TVEpisode.contentUrl` 与页面链接中提取 `/video/public/{vid}/{quality}p.mp4` 地址。0.2.156 修复电视模式输入框困住遥控焦点的问题：追剧与历史记录页的搜索框、以及其余电视可达的输入框此前都会吃掉方向键，焦点进得去出不来，输入框末尾的一键清除按钮也无法用遥控器选中；现在输入框自己接管方向键（右移选中一键清除、左移回到输入框、上下按出口回调或方向遍历离开）并在应用根部为所有页面与弹窗补上方向键兜底。0.2.155 的直播入口分级与激活码变更、0.2.152 的电视模式搜索、0.2.151 的确认键提交、0.2.150 的 Android 6 独立兼容版构建入口、红果鉴与真果鉴独立 Android 包名和发布签名继续保留；完整主版本的直播、推荐与搜索缓存、剧库导入导出、播放器生命周期与玻璃界面、网络出口切换、屏幕常亮、观看统计、断点续传与新增站源解析等功能继续保留。
 
-按用户 2026-09-21 的要求，继续暂停整体验证。0.2.51 的 GitHub Actions 构建、打包和 Release 记录保留；本次仅补充两版 Android 的包名与签名选择，checks、构建矩阵和 Release 上传流程保持原有规则。0.2.156+2169 等待 GitHub Actions 远程构建；本轮电视端输入框方向键与一键清除按钮修复只完成源码，未在 Android TV 真机遥控验证。启动、榜单、画质增强、站源改名、画中画、连续播放控制栏、红果系列剧提醒、播放器 Tab 化、首页 / 播放页优化、多站源站源修复、十二个新增站源、直播、推荐、剧库传输、播放器生命周期、历史记录批量删除、设备互联和 Android 6 兼容版均保留未验证快照状态。
+按用户 2026-09-21 的要求，继续暂停整体验证。0.2.51 的 GitHub Actions 构建、打包和 Release 记录保留；本次同步上游红果接口修复与 Android 发布签名修正，checks、构建矩阵和 Release 上传流程保持原有规则。0.2.157+2170 等待 GitHub Actions 远程构建；本轮红果 App 播放取流签名、播放响应格式兼容与红果网页取流恢复只完成源码，未在红果手机、Android TV 与 Windows 上做连续选集播放验证。启动、榜单、画质增强、站源改名、画中画、连续播放控制栏、红果系列剧提醒、播放器 Tab 化、首页 / 播放页优化、多站源站源修复、十二个新增站源、直播、推荐、剧库传输、播放器生命周期、历史记录批量删除、设备互联和 Android 6 兼容版均保留未验证快照状态。
 
 | 编译方式 | 应用名称 | 可用站源 |
 | --- | --- | --- |
@@ -57,6 +57,46 @@ Flutter 多端独立短剧应用，原名“短剧库 APP”。站源请求、�
 | 芽果、猫果、饭果、观果、河果、星果、花果、牛果、网果、发果、皮果、伍果（全站源版） | 已接入设备端目录、详情、分集与播放解析；部分站源使用网页解析、登录令牌或签名接口，均待集中验证 | 按各站源实际接口接入；河果、星果等无稳定服务端搜索的站源保留已加载内容筛选 |
 
 站源可用性、清晰度和区域限制取决于源站及网络；应用不解除源站 VIP 或其他授权限制。
+
+### 真果鉴 Android 安装图标修正（上游 0.2.152+2165，本项目 0.2.157+2170 同步）
+
+上游修正的 Android 应用级图标原先固定指向通用播放图形。真果鉴的彩色果实图标只用于启动器别名，因此安装器展示应用信息时仍显示通用图形。现在全站源版将应用级 `icon` 与 `roundIcon` 都指向真果鉴图标，默认红果鉴仍使用现有图标。本次合并已把 `android/app/src/main/AndroidManifest.xml` 的 `${appIcon}` 占位符与 `android/app/build.gradle.kts` 的 `manifestPlaceholders["appIcon"]` 一并并入。
+
+本轮只完成源码与 README 更新，没有构建或运行测试；修正后的安装界面和桌面图标仍待 Android 实机确认。
+
+### 上游红果接口修复同步（0.2.157+2170）
+
+本项目新增上游仓库 [xiaoguan521/guoapp](https://github.com/xiaoguan521/guoapp) 为 `upstream` 远端并合并其红果接口修复。上游修复由三部分组成，均已并入本项目源码：
+
+- 红果 App 播放器取流签名：新增 `native/core/provider_hongguo_player_sign.go`，普通播放请求在既有 X-Gorgon / X-Khronos 之外补齐 X-Argus / X-Ladon；`native/core/provider_hongguo_app.go` 的播放请求改为携带 `installID` 与新签名，评论接口继续使用原有独立签名。
+- 播放响应兼容：`native/core/provider_hongguo_native_media.go` 同时接受 JSON 与 Base64 JSON 编码的 `video_model`，并在 `video_model` 为空时回退到扁平的 `video_list`。
+- 红果官网回退解析：`native/core/provider_hongguo.go` 改读 `protectedPlayback` 以及 `vid` / `video_id` / `series_id` 等字段名，并从 JSON-LD `TVEpisode.contentUrl` 与页面链接中提取 `/video/public/{vid}/{quality}p.mp4` 地址。
+
+合并同时并入上游的 Android 应用级图标占位符与正式 APK 的显式 V1 / V2 签名开关。本项目原有改动全部保留：`scripts/configure_signing.py` 的 `--require` 强制签名（`--require-signing` 作为同义参数）、`scripts/apk_signature.py` 指纹校验、`android/signing-fingerprints.json`，以及设备互联、远程控件、电视端搜索与输入焦点修复等 `lib/` 改动均未被上游版本覆盖。
+
+本轮只完成源码合并与 README 更新，没有构建、运行测试或进行红果连续播放设备验证；红果手机、Android TV、Windows 与 iOS 均待集中验证。
+
+### Android APK 签名兼容修正（上游 0.2.153+2166，本项目 0.2.157+2170 同步）
+
+上游对比其 Release 实际 APK 后确认：上游 0.2.150+2163 与 0.2.151+2164 使用同一张固定发布证书，均通过 V2 签名校验；上游 0.2.150+2161 与 +2162 则由各自 CI 运行器的临时 Android Debug 证书签名。后两种预览证书不可用于稳定升级。正式 APK 现在同时启用 V1 / V2；正式发布缺少固定签名 Secrets 时会失败，PR 仍可生成 Debug 预览 APK，但不上传 Release。本项目自己的包名与签名方案不同，上表证书指纹与 `android/signing-fingerprints.json` 保持不变。
+
+若设备已安装由上游 +2161 或 +2162 临时证书签名的同包名 APK，Android 不允许用另一证书直接覆盖；需要先备份应用内数据并卸载旧包，再安装固定证书版本。当前版本签名修改尚未构建或在 Vivo 设备上验证。
+
+### 红果连续选集取流兼容（上游 0.2.154+2167，本项目 0.2.157+2170 同步）
+
+参考 [Xanerix/guoapp 的红果取流修复](https://github.com/Xanerix/guoapp/pull/7)，播放器接口在既有 X-Gorgon / X-Khronos 签名之外还需要 X-Argus / X-Ladon；缺失时可能返回空数据或错误码。当前设备端请求为每次普通红果 App 接口请求生成随机签名参数，并保留原有评论接口的独立签名。
+
+播放响应现在同时兼容 JSON 或 Base64 JSON 编码的 `video_model`，以及直接返回的扁平 `video_list`。选集仍按每集自己的视频 ID 重新请求播放信息，再按现有规则筛选可播放媒体和密钥；官网与备用线路继续作为回退。参考仓库采用了相同的签名和响应结构兼容方式，适用于截图中 App 接口没有有效数据、网页返回 404、备用接口未取到媒体的失败路径。
+
+本轮只完成源码和 README 更新，没有构建、运行测试或进行连续播放设备验证；红果手机、Android TV、Windows 与 iOS 均待集中验证。
+
+### 红果在线播放解析修复（上游 0.2.151+2164，本项目 0.2.157+2170 同步）
+
+参考 [guoapp3 的红果修复记录](https://github.com/wokaotianshi123/guoapp3#readme)，红果 App 取流接口会返回空体或未知异常，而官网播放页已从旧的 `video_player_info` 结构迁到 `protectedPlayback`；网页公开媒体地址现在位于 JSON-LD `TVEpisode.contentUrl`，并采用 `/video/public/{vid}/{quality}p.mp4` 路径。此前上游网页回退只读取旧字段，因而 App 取流失败后仍无法得到媒体地址。
+
+现有取流顺序保留为 App 接口、官网网页、第三方备用接口。网页解析保留旧字段兼容；旧字段没有地址时，从 JSON-LD 与页面公开地址中提取与当前视频 ID 匹配的 MP4 地址，按画质从高到低选择，读取 `durationSeconds`，没有发现地址时构造 360p 公共地址作为最后回退。Android、Windows、Android TV 与 iOS 共用 Go 原生核心，因此一处解析更新覆盖这些平台的红果播放链路。
+
+本轮只完成源码与 README 更新，没有构建、联网端到端播放或运行测试；所有平台仍标记为未验证开发快照，也未请求或处理站源图片、真实播放列表或媒体文件。
 
 ### 启动问题与红果榜单（0.2.18）
 
@@ -348,6 +388,8 @@ exports/
 0.2.155 修复绿色模式下导航栏直播入口无法隐藏的问题：直播入口此前只看编译版本与激活码，绿色模式“不显示成人直播”的承诺对入口完全失效，真果鉴下直播页还被固定传为非绿色模式，绕过了分级过滤；现在打开分级限制即隐藏直播入口，直播页也按当前分级设置过滤源与分类；红果鉴的直播激活码从 `Shineyue` 改为 `van0509`，激活方式不变。待设备验证。
 
 0.2.156 修复电视模式输入框困住遥控焦点的问题，表现为追剧与历史记录页的搜索框把焦点移进去后再也出不来，输入框末尾的一键清除按钮也无法被遥控器选中。根因有两层：`DefaultTextEditingShortcuts` 把四个方向键注册为文本选择意图，`EditableText` 的对应动作会消费按键（动作的 `consumesKey` 默认为真），按键因此走不到焦点遍历；而 `WidgetsApp` 默认把方向键映射为 `DirectionalFocusIntent`，它的 `ignoreTextFields` 默认为真，即使按键到达也不会在输入框内按方向遍历。现在分两处修：控件层新增 `RemoteTextField`，电视模式下由输入框自行接管方向键——有文字时右移选中一键清除按钮（清空后焦点回到输入框），左移从清除按钮回到输入框，上下优先调用调用方给的出口回调，没有回调时按方向遍历离开；一键清除在电视模式下改为可聚焦控件（`RemoteTarget`）而不是 `IconButton`，遥控器确认键因此能真正选中并执行。全局层在 `MaterialApp.builder` 的电视分支里包一层 `Focus`，方向键先按方向遍历尝试移动焦点，只有找到目标才消费按键，找不到就放行给原有快捷键，因此其余页面和弹窗中未被控件接管的输入框（剧集跳转、设备改名、用户与密码、代理地址、直播激活码等）同样能移出焦点。手机与桌面不进入这两条分支，文本编辑行为保持不变。同一版本把应用版本常量与原生核心 `initialize` 返回的版本从 `0.2.149` 对齐到 `0.2.156`：关于对话框在 Android 上读安装包版本，其余平台此前取该常量，显示版本会落后于安装包；`initialize` 返回的版本不参与任何一致性判断，站源版本与签名检查的原有规则不变。待 Android TV 真机遥控验证。
+
+0.2.157 同步上游 `xiaoguan521/guoapp` 的红果接口修复，本项目自身改动全部保留。上游修复分三处：一是红果 App 播放器取流新增 X-Argus / X-Ladon 签名，此前只有 X-Gorgon / X-Khronos，签名缺失时接口会返回空数据或错误码；二是播放响应不再假定 `video_model` 一定是 JSON 字符串，同时接受 Base64 JSON 与直接返回的扁平 `video_list`；三是官网回退解析改读 `protectedPlayback` 与 `TVEpisode.contentUrl`，取 `/video/public/{vid}/{quality}p.mp4`。合并同时并入上游的应用级图标占位符与正式 APK 显式 V1 / V2 签名开关。本项目的 `--require` 签名强制、`scripts/apk_signature.py` 指纹校验和 `android/signing-fingerprints.json` 保持在原有规则下生效，`scripts/configure_signing.py` 额外接受上游使用的 `--require-signing` 同义参数；设备互联、远程控件与电视端输入焦点修复等 `lib/` 改动未被覆盖。待红果手机、Android TV、Windows 与 iOS 连续播放验证。
 
 ## 视频画质增强与超分方案（2026-09-22 调研，0.2.18 已接入源码）
 
@@ -644,14 +686,14 @@ SR-1、SR-2 与 SR-4 已接入源码，小型动漫 CNN 也包含在本轮；SR-
 
 ## 安装包与平台状态
 
-0.2.55+61 本轮只更新源码，尚未重新构建安装包；0.2.51+57 已由现有 GitHub Actions 完成红果鉴与真果鉴两版 Android 三种 ABI、Windows x64 ZIP 和未签名 iOS IPA 构建并上传 GitHub Release。构建和包结构检查已通过；尚未进行本轮新增功能的真实设备安装、启动、视觉、播放和站源验收，以下 0.2.15 数据为历史构建记录。
+0.2.157+2170 本轮只更新源码，尚未重新构建安装包；0.2.51+57 已由现有 GitHub Actions 完成红果鉴与真果鉴两版 Android 三种 ABI、Windows x64 ZIP 和未签名 iOS IPA 构建并上传 GitHub Release。历史构建和包结构检查已通过；尚未进行本轮新增功能的真实设备安装、启动、视觉、播放和站源验收，以下 0.2.15 数据为历史构建记录。
 
 0.2.15+21 已完成两版 Android ARM64 打包与安装包检查，签名与 0.2.10+16、0.2.14+20 一致，ARM64 分包版本码递增至 2021，可直接覆盖升级。此版本包含启动导航修复与首页多选、推荐、榜单的布局调整。Windows / iOS 完整应用仍待相应平台构建，本轮没有进行设备运行确认。
 
 | 平台 | 包与状态 |
 | --- | --- |
 | Android 8.0+ 手机 | `0.2.51+57` 两版 ARMv7 / ARM64 / x86_64 APK 已由 Actions 构建并发布，真实安装与运行仍待验收 |
-| Android 6.0+ 兼容版 | `android6-0.2.150` 独立红果鉴 APK 由兼容工作流手动构建和发布，在线播放保留，下载与本地媒体处理不提供；当前待 Actions 构建与实机验收 |
+| Android 6.0+ 兼容版 | 当前源码 `0.2.157+2170` 的独立红果鉴 APK 待兼容工作流构建；在线播放保留，下载与本地媒体处理不提供，Android 6 实机验收待完成 |
 | Windows 10/11 x64 | `0.2.51+57` 两版完整 ZIP 已由 Actions 构建并发布；解压后分别运行 `hongguojian.exe` 或 `zhenguojian.exe`，保留所有 DLL 和 `data`；局域网原生发现依赖 Windows 10 1903+，包启动与设备互联仍待验证 |
 | Android TV | 与手机共用 `0.2.51+57` Android 包；已补强自动识别与电视模式横屏，待电视 / 盒子实机验收；0.2.12 选集 / 设置及 0.2.13 同步仍待集中验证 |
 | iOS 15.1+ | `0.2.51+57` 两版未签名 IPA 已由 Actions 构建并发布；0.2.40 起播放页禁用 media_kit_video 硬件纹理加速以规避 libmpv OpenGL ES 渲染上下文失败直接退出；仍待签名安装与真机验收 |
@@ -694,7 +736,7 @@ Android 正式发布按版本使用固定独立签名并递增构建号，在仓
 
 Android 6 兼容工作流继续读取 `ANDROID_KEYSTORE_BASE64`、`ANDROID_KEYSTORE_PASSWORD`、`ANDROID_KEY_ALIAS` 和 `ANDROID_KEY_PASSWORD`；它们应与红果鉴签名保持一致。
 
-推送 `main` / `master` 或 `v*` 标签构建时，`scripts/configure_signing.py --require` 在缺少任意一组 Secrets 时直接失败，不再回退到构建机自动生成的调试证书；PR 和手动运行仍可生成预览 APK。打包完成后 `scripts/apk_signature.py` 解析每个 APK 的 v2/v3 签名块，与入库的 `android/signing-fingerprints.json` 比对证书 SHA-256，并拦截 `Android Debug` 预览证书：
+Pull Request 缺少 Secrets 时生成仅用于预览的 Debug 签名 APK，不发布到 GitHub Release；预览 APK 不能保证覆盖已安装的正式版。推送 `main` / `master` 或 `v*` 标签构建时，`scripts/configure_signing.py --require`（同 `--require-signing`）在缺少任意一组 Secrets 时直接失败，不再回退到构建机自动生成的调试证书；PR 和手动运行仍可生成预览 APK。打包完成后 `scripts/apk_signature.py` 解析每个 APK 的 v2/v3 签名块，与入库的 `android/signing-fingerprints.json` 比对证书 SHA-256，并拦截 `Android Debug` 预览证书：
 
 ~~~sh
 python3 scripts/apk_signature.py dist/android dist/android6

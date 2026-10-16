@@ -178,6 +178,7 @@ func (downloader *Downloader) hongguoAppRequest(ctx context.Context, method, pat
 		request.Header.Set("Sdk-Version", "2")
 		comment, _ := ctx.Value(hongguoCommentKey{}).(bool)
 		var commentNonce hongguoCommentNonce
+		var playerNonce hongguoPlayerNonce
 		if comment {
 			commentNonce, err = newHongguoCommentNonce()
 			if err != nil {
@@ -185,6 +186,11 @@ func (downloader *Downloader) hongguoAppRequest(ctx context.Context, method, pat
 			}
 			request.Header.Set("Comment-Source", "601")
 			request.Header.Set("Server-Channel", "1000")
+		} else {
+			playerNonce, err = newHongguoPlayerNonce()
+			if err != nil {
+				return nil, errors.New("无法准备红果播放请求")
+			}
 		}
 		if payload != nil {
 			request.Header.Set("Content-Type", "application/json; charset=utf-8")
@@ -196,7 +202,7 @@ func (downloader *Downloader) hongguoAppRequest(ctx context.Context, method, pat
 			if comment {
 				signHongguoCommentRequest(prepared, commentNonce, now)
 			} else {
-				signHongguoRequest(prepared, body, now)
+				signHongguoPlayerRequest(prepared, body, now, installID, playerNonce)
 			}
 		})
 		if err != nil {

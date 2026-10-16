@@ -46,11 +46,17 @@ android {
         versionName = flutter.versionName
         manifestPlaceholders["appLabel"] = appLabel
         manifestPlaceholders["appLabelFull"] = appLabel
+        manifestPlaceholders["appIcon"] =
+            if (allSources) "@mipmap/ic_launcher_full" else "@drawable/app_icon"
         manifestPlaceholders["appBanner"] = if (allSources) "@drawable/tv_banner_all_sources" else "@drawable/tv_banner"
         manifestPlaceholders["appBannerFull"] = if (allSources) "@drawable/tv_banner_all_sources" else "@drawable/tv_banner"
     }
 
     signingConfigs {
+        getByName("debug") {
+            enableV1Signing = true
+            enableV2Signing = true
+        }
         if (releaseKey.exists()) {
             create("release") {
                 storeFile = file(requireNotNull(releaseProperties.getProperty("storeFile")))
@@ -58,6 +64,8 @@ android {
                 keyAlias = requireNotNull(releaseProperties.getProperty("keyAlias"))
                 keyPassword = requireNotNull(releaseProperties.getProperty("keyPassword"))
                 storeType = releaseProperties.getProperty("storeType") ?: "JKS"
+                enableV1Signing = true
+                enableV2Signing = true
             }
         }
     }

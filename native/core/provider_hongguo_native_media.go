@@ -26,11 +26,38 @@ func (downloader *Downloader) resolveHongguoAppMedia(ctx context.Context, videoI
 	}
 	data := nestedMap(result, "data")
 	model, _ := data["video_model"].(map[string]any)
-	if encoded, ok := data["video_model"].(string); ok {
-		decoder := json.NewDecoder(strings.NewReader(encoded))
-		decoder.UseNumber()
-		if err := decoder.Decode(&model); err != nil {
+	if encoded, ok := data["video_model"].(string); ok && encoded != "" {
+		decodeModel := func(value string) (map[string]any, error) {
+			var decoded map[string]any
+			decoder := json.NewDecoder(strings.NewReader(value))
+			decoder.UseNumber()
+			if err := decoder.Decode(&decoded); err != nil {
+				return nil, err
+			}
+			return decoded, nil
+		}
+		decoded, err := decodeModel(encoded)
+		if err != nil {
+			payload, decodeErr := decodeHongguoBase64(encoded)
+			if decodeErr != nil || len(payload) == 0 {
+				return providerMedia{}, errors.New("红果 App 播放信息格式异常")
+			}
+			decoded, err = decodeModel(string(payload))
+		}
+		if err != nil || decoded == nil {
 			return providerMedia{}, errors.New("红果 App 播放信息格式异常")
+		}
+		model = decoded
+	}
+	if len(model) == 0 {
+		_, hasList := data["video_list"].([]any)
+		rows, hasMap := data["video_list"].(map[string]any)
+		if hasList && len(anyList(data["video_list"])) > 0 || hasMap && len(rows) > 0 {
+			model = map[string]any{
+				"video_list":     data["video_list"],
+				"video_duration": data["video_duration"],
+				"duration":       data["duration"],
+			}
 		}
 	}
 	return selectHongguoAppMedia(model)
