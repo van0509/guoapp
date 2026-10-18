@@ -30,10 +30,12 @@ class DownloadsScreen extends StatefulWidget {
     required this.store,
     this.embedded = false,
     this.playerBuilder,
+    this.onExitLeft,
   });
   final AppRepository repository;
   final LocalStore store;
   final bool embedded;
+  final VoidCallback? onExitLeft;
   @visibleForTesting
   final Widget Function(DramaDetail, int, double)? playerBuilder;
   @override
@@ -1398,6 +1400,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                   spacing: 8,
                   padding: const EdgeInsets.fromLTRB(12, 4, 12, 20),
                   onExitUp: () => _toolbarKey.currentState?.focusCurrent(),
+                  onExitLeft: widget.onExitLeft,
                   onExitDown: _selecting
                       ? () => _batchKey.currentState?.focusCurrent()
                       : null,

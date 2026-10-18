@@ -35,6 +35,32 @@ void ensureTelevisionFocus(BuildContext context) {
   });
 }
 
+void revealRemoteFocus(BuildContext context) {
+  final scrollable = Scrollable.maybeOf(context);
+  if (scrollable == null) return;
+  final position = scrollable.position;
+  if (!position.hasPixels || !position.hasViewportDimension) return;
+  final object = context.findRenderObject();
+  if (object == null || !object.attached) return;
+  final viewport = RenderAbstractViewport.maybeOf(object);
+  if (viewport == null) return;
+  final start = viewport.getOffsetToReveal(object, 0).offset;
+  final end = viewport.getOffsetToReveal(object, 1).offset;
+  final double target;
+  if (position.pixels > start + 1) {
+    target = start;
+  } else if (position.pixels < end - 1) {
+    target = end;
+  } else {
+    return;
+  }
+  position.animateTo(
+    target.clamp(position.minScrollExtent, position.maxScrollExtent),
+    duration: const Duration(milliseconds: 140),
+    curve: Curves.easeOutCubic,
+  );
+}
+
 class RemoteTarget extends StatefulWidget {
   const RemoteTarget({
     super.key,
@@ -89,12 +115,7 @@ class _RemoteTargetState extends State<RemoteTarget> {
       if (focused) {
         widget.onFocus?.call();
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && _focused) {
-            Scrollable.ensureVisible(
-              context,
-              alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
-            );
-          }
+          if (mounted && _focused) revealRemoteFocus(context);
         });
       }
     },

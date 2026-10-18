@@ -4,6 +4,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'app_layout.dart';
+import 'remote_widgets.dart';
+
 class GlassPanel extends StatelessWidget {
   const GlassPanel({
     super.key,
@@ -357,6 +360,17 @@ class _GlassMenuRoute<T> extends PopupRoute<T> {
     return content < maxHeight ? content : maxHeight;
   }
 
+  int get _initialIndex {
+    if (autofocusSelected) {
+      final selected = entries.indexWhere(
+        (entry) => entry.selected && entry.enabled,
+      );
+      if (selected >= 0) return selected;
+    }
+    final first = entries.indexWhere((entry) => entry.enabled);
+    return first < 0 ? 0 : first;
+  }
+
   @override
   Widget buildPage(
     BuildContext context,
@@ -364,6 +378,7 @@ class _GlassMenuRoute<T> extends PopupRoute<T> {
     Animation<double> secondaryAnimation,
   ) {
     final size = MediaQuery.sizeOf(context);
+    final television = AppLayout.isTelevision(context);
     final available = size.height - _margin * 2;
     final height = _height > available ? available : _height;
     final menuWidth = width > size.width - 16 ? size.width - 16 : width;
@@ -407,19 +422,40 @@ class _GlassMenuRoute<T> extends PopupRoute<T> {
                 child: SizedBox(
                   width: menuWidth,
                   height: height,
-                  child: ListView(
-                    padding: const EdgeInsets.all(6),
-                    itemExtent: itemExtent,
-                    children: [
-                      for (final (index, entry) in entries.indexed)
-                        _GlassMenuItem<T>(
-                          entry: entry,
-                          animation: animation,
-                          index: index,
-                          autofocus: autofocusSelected,
+                  child: television
+                      ? RemoteList(
+                          itemKeys: [
+                            for (var index = 0; index < entries.length; index++)
+                              'glass-menu-$index',
+                          ],
+                          itemExtent: itemExtent,
+                          spacing: 0,
+                          padding: const EdgeInsets.all(6),
+                          autofocus: true,
+                          initialIndex: _initialIndex,
+                          itemBuilder: (context, index, node, onFocus) =>
+                              _GlassMenuItem<T>(
+                                entry: entries[index],
+                                animation: animation,
+                                index: index,
+                                focusNode: node,
+                                onFocus: onFocus,
+                                remote: true,
+                              ),
+                        )
+                      : ListView(
+                          padding: const EdgeInsets.all(6),
+                          itemExtent: itemExtent,
+                          children: [
+                            for (final (index, entry) in entries.indexed)
+                              _GlassMenuItem<T>(
+                                entry: entry,
+                                animation: animation,
+                                index: index,
+                                autofocus: autofocusSelected,
+                              ),
+                          ],
                         ),
-                    ],
-                  ),
                 ),
               ),
             ),
@@ -436,12 +472,18 @@ class _GlassMenuItem<T> extends StatelessWidget {
     required this.animation,
     required this.index,
     this.autofocus = false,
+    this.focusNode,
+    this.onFocus,
+    this.remote = false,
   });
 
   final GlassMenuEntry<T> entry;
   final Animation<double> animation;
   final int index;
   final bool autofocus;
+  final FocusNode? focusNode;
+  final VoidCallback? onFocus;
+  final bool remote;
 
   @override
   Widget build(BuildContext context) {
@@ -454,6 +496,40 @@ class _GlassMenuItem<T> extends StatelessWidget {
     final labelColor = entry.enabled
         ? (entry.selected ? colors.primary : colors.onSurface)
         : colors.onSurfaceVariant.withValues(alpha: .45);
+    final content = Padding(
+      padding: EdgeInsets.symmetric(horizontal: remote ? 10 : 14),
+      child: Row(
+        children: [
+          if (entry.leading != null) ...[
+            IconTheme.merge(
+              data: IconThemeData(
+                size: 20,
+                color: entry.enabled
+                    ? colors.onSurfaceVariant
+                    : colors.onSurfaceVariant.withValues(alpha: .4),
+              ),
+              child: entry.leading!,
+            ),
+            const SizedBox(width: 10),
+          ],
+          Expanded(
+            child: DefaultTextStyle.merge(
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: entry.selected ? FontWeight.w700 : FontWeight.w500,
+                color: labelColor,
+              ),
+              child: entry.label,
+            ),
+          ),
+          if (entry.trailing != null)
+            IconTheme.merge(
+              data: const IconThemeData(size: 18),
+              child: entry.trailing!,
+            ),
+        ],
+      ),
+    );
     return FadeTransition(
       opacity: revealed,
       child: SlideTransition(
@@ -461,62 +537,40 @@ class _GlassMenuItem<T> extends StatelessWidget {
           begin: const Offset(0, .3),
           end: Offset.zero,
         ).animate(revealed),
-        child: InkWell(
-          autofocus: autofocus && entry.selected && entry.enabled,
-          onTap: entry.enabled
-              ? () {
+        child: remote
+            ? RemoteTarget(
+                focusNode: focusNode,
+                onFocus: onFocus,
+                selected: entry.selected,
+                padding: EdgeInsets.zero,
+                onPressed: () {
+                  if (!entry.enabled) return;
                   HapticFeedback.selectionClick();
                   Navigator.of(context).pop<T>(entry.value);
-                }
-              : null,
-          borderRadius: BorderRadius.circular(14),
-          overlayColor: WidgetStateProperty.resolveWith<Color?>((states) {
-            if (states.contains(WidgetState.pressed) ||
-                states.contains(WidgetState.hovered)) {
-              return colors.primary.withValues(alpha: .12);
-            }
-            if (states.contains(WidgetState.focused)) {
-              return colors.primary.withValues(alpha: .18);
-            }
-            return Colors.transparent;
-          }),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Row(
-              children: [
-                if (entry.leading != null) ...[
-                  IconTheme.merge(
-                    data: IconThemeData(
-                      size: 20,
-                      color: entry.enabled
-                          ? colors.onSurfaceVariant
-                          : colors.onSurfaceVariant.withValues(alpha: .4),
-                    ),
-                    child: entry.leading!,
-                  ),
-                  const SizedBox(width: 10),
-                ],
-                Expanded(
-                  child: DefaultTextStyle.merge(
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: entry.selected
-                          ? FontWeight.w700
-                          : FontWeight.w500,
-                      color: labelColor,
-                    ),
-                    child: entry.label,
-                  ),
-                ),
-                if (entry.trailing != null)
-                  IconTheme.merge(
-                    data: const IconThemeData(size: 18),
-                    child: entry.trailing!,
-                  ),
-              ],
-            ),
-          ),
-        ),
+                },
+                child: content,
+              )
+            : InkWell(
+                autofocus: autofocus && entry.selected && entry.enabled,
+                onTap: entry.enabled
+                    ? () {
+                        HapticFeedback.selectionClick();
+                        Navigator.of(context).pop<T>(entry.value);
+                      }
+                    : null,
+                borderRadius: BorderRadius.circular(14),
+                overlayColor: WidgetStateProperty.resolveWith<Color?>((states) {
+                  if (states.contains(WidgetState.pressed) ||
+                      states.contains(WidgetState.hovered)) {
+                    return colors.primary.withValues(alpha: .12);
+                  }
+                  if (states.contains(WidgetState.focused)) {
+                    return colors.primary.withValues(alpha: .18);
+                  }
+                  return Colors.transparent;
+                }),
+                child: content,
+              ),
       ),
     );
   }

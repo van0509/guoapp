@@ -98,6 +98,9 @@ class _HomeScreenState extends State<HomeScreen> {
   final _sourceMenuKey = GlobalKey(debugLabel: 'source-menu-anchor');
   final _moreMenuKey = GlobalKey(debugLabel: 'more-menu-anchor');
   final _selectionFocus = FocusNode(debugLabel: 'tv-selection');
+  DateTime? _lastBackAt;
+  bool _exitArmed = false;
+  Timer? _exitTimer;
   late final LiveRepository _liveRepository = LiveRepository();
   late final LiveStore _liveStore = LiveStore(
     widget.store.preferences,
@@ -541,14 +544,47 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _televisionBack() {
+    final now = DateTime.now();
+    final last = _lastBackAt;
+    _lastBackAt = now;
+    if (last != null &&
+        now.difference(last) < const Duration(milliseconds: 150)) {
+      return;
+    }
     if (_selectionMode) {
+      _disarmTelevisionExit();
       _cancelSelection();
-    } else if (_tab != _tabDiscover) {
-      setState(() => _tab = 0);
-    } else if (_search.text.isNotEmpty) {
+      return;
+    }
+    if (_tab != _tabDiscover) {
+      _disarmTelevisionExit();
+      _changeTab(_tabDiscover);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _navKey.currentState?.focusCurrent();
+      });
+      return;
+    }
+    if (_search.text.isNotEmpty) {
+      _disarmTelevisionExit();
       _search.clear();
       _searchChanged('');
+      return;
     }
+    if (_exitArmed) {
+      _disarmTelevisionExit();
+      unawaited(SystemNavigator.pop());
+      return;
+    }
+    _exitArmed = true;
+    _exitTimer?.cancel();
+    _exitTimer = Timer(const Duration(seconds: 3), _disarmTelevisionExit);
+    AppNotice.show(context, '再按一次返回键退出应用');
+  }
+
+  void _disarmTelevisionExit() {
+    _exitTimer?.cancel();
+    _exitTimer = null;
+    _exitArmed = false;
   }
 
   @override
@@ -594,6 +630,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _scroll.dispose();
     _appBarFocus.dispose();
     _selectionFocus.dispose();
+    _disarmTelevisionExit();
     _liveRepository.dispose();
     _liveStore.dispose();
     super.dispose();
@@ -1457,6 +1494,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               repository: widget.repository,
                               store: widget.store,
                               embedded: true,
+                              onExitLeft: television
+                                  ? () => _navKey.currentState?.focusCurrent()
+                                  : null,
                             )
                           : SavedLibrary(
                               key: ValueKey('saved-tab-$_tab'),
@@ -1566,17 +1606,14 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         }
         return PopScope(
-          canPop:
-              !_selectionMode && _tab == _tabDiscover && _search.text.isEmpty,
+          canPop: false,
           onPopInvokedWithResult: (didPop, result) {
             if (!didPop) _televisionBack();
           },
           child: CallbackShortcuts(
             bindings: {
-              const SingleActivator(LogicalKeyboardKey.escape): () =>
-                  Navigator.of(context).maybePop(),
-              const SingleActivator(LogicalKeyboardKey.goBack): () =>
-                  Navigator.of(context).maybePop(),
+              const SingleActivator(LogicalKeyboardKey.escape): _televisionBack,
+              const SingleActivator(LogicalKeyboardKey.goBack): _televisionBack,
             },
             child: scaffold,
           ),

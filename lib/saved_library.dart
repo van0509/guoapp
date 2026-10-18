@@ -46,6 +46,12 @@ class SavedLibrary extends StatefulWidget {
 }
 
 class _SavedLibraryState extends State<SavedLibrary> {
+  static final _followFilters = <(String, String)>[
+    ('', '全部'),
+    for (final status in FollowStatus.values) (status.name, status.label),
+    ('updates', '有更新'),
+  ];
+
   final _search = TextEditingController();
   String _filter = '';
   late bool _history = widget.history;
@@ -185,27 +191,55 @@ class _SavedLibraryState extends State<SavedLibrary> {
         if (_toggle)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: SegmentedButton<bool>(
-              key: const ValueKey('saved-mode'),
-              segments: const [
-                ButtonSegment(
-                  value: false,
-                  icon: Icon(Icons.bookmark_border_rounded, size: 18),
-                  label: Text('追剧'),
-                ),
-                ButtonSegment(
-                  value: true,
-                  icon: Icon(Icons.history_rounded, size: 18),
-                  label: Text('历史'),
-                ),
-              ],
-              showSelectedIcon: false,
-              selected: {_history},
-              onSelectionChanged: (value) => setState(() {
-                _history = value.first;
-                _filter = '';
-              }),
-            ),
+            child: AppLayout.isTelevision(context)
+                ? Align(
+                    alignment: Alignment.centerLeft,
+                    child: RemoteRow(
+                      key: const ValueKey('saved-mode'),
+                      itemKeys: const [
+                        'saved-mode-follow',
+                        'saved-mode-history',
+                      ],
+                      spacing: 8,
+                      onExitLeft: widget.onExitLeft,
+                      onExitUp: widget.onExitUp,
+                      itemBuilder: (context, index, node, onFocus) =>
+                          RemoteButton(
+                            focusNode: node,
+                            onFocus: onFocus,
+                            selected: (index == 1) == _history,
+                            onPressed: () => setState(() {
+                              _history = index == 1;
+                              _filter = '';
+                            }),
+                            label: index == 1 ? '历史' : '追剧',
+                            icon: index == 1
+                                ? Icons.history_rounded
+                                : Icons.bookmark_border_rounded,
+                          ),
+                    ),
+                  )
+                : SegmentedButton<bool>(
+                    key: const ValueKey('saved-mode'),
+                    segments: const [
+                      ButtonSegment(
+                        value: false,
+                        icon: Icon(Icons.bookmark_border_rounded, size: 18),
+                        label: Text('追剧'),
+                      ),
+                      ButtonSegment(
+                        value: true,
+                        icon: Icon(Icons.history_rounded, size: 18),
+                        label: Text('历史'),
+                      ),
+                    ],
+                    showSelectedIcon: false,
+                    selected: {_history},
+                    onSelectionChanged: (value) => setState(() {
+                      _history = value.first;
+                      _filter = '';
+                    }),
+                  ),
           ),
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 12, 12, 8),
@@ -262,28 +296,47 @@ class _SavedLibraryState extends State<SavedLibrary> {
                 ),
         ),
         if (!_history)
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
+          Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Row(
-              children: [
-                for (final filter in [
-                  ('', '全部'),
-                  for (final status in FollowStatus.values)
-                    (status.name, status.label),
-                  ('updates', '有更新'),
-                ])
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      key: ValueKey('follow-filter-${filter.$1}'),
-                      label: Text(filter.$2),
-                      selected: _filter == filter.$1,
-                      onSelected: (_) => setState(() => _filter = filter.$1),
+            child: AppLayout.isTelevision(context)
+                ? RemoteRow(
+                    itemKeys: [
+                      for (final filter in _followFilters)
+                        'follow-filter-${filter.$1}',
+                    ],
+                    spacing: 8,
+                    onExitLeft: widget.onExitLeft,
+                    onExitUp: widget.onExitUp,
+                    itemBuilder: (context, index, node, onFocus) {
+                      final filter = _followFilters[index];
+                      return RemoteButton(
+                        key: ValueKey('follow-filter-${filter.$1}'),
+                        focusNode: node,
+                        onFocus: onFocus,
+                        selected: _filter == filter.$1,
+                        onPressed: () => setState(() => _filter = filter.$1),
+                        label: filter.$2,
+                      );
+                    },
+                  )
+                : SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (final filter in _followFilters)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ChoiceChip(
+                              key: ValueKey('follow-filter-${filter.$1}'),
+                              label: Text(filter.$2),
+                              selected: _filter == filter.$1,
+                              onSelected: (_) =>
+                                  setState(() => _filter = filter.$1),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-              ],
-            ),
           ),
         if (resume != null)
           Padding(
