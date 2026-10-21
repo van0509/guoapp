@@ -45,6 +45,10 @@ Future<void> main(List<String> arguments) async {
     return;
   }
   final device = await AppDevice.detect();
+  if (Platform.isAndroid) {
+    final compatible = await AppDevice.compatibleRendering();
+    debugPrint('[App] 渲染: ${compatible ? 'skia' : 'impeller'}');
+  }
   runApp(AppBootstrap(device: device));
 }
 

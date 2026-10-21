@@ -16,13 +16,6 @@ import (
 
 const hongguoBaseURL = "https://hongguoduanju.com"
 
-var (
-	hongguoJSONLDScriptPattern  = regexp.MustCompile(`(?is)<script\b[^>]*\btype\s*=\s*["']application/ld\+json["'][^>]*>(.*?)</script\s*>`)
-	hongguoWebPublicLinkPattern = regexp.MustCompile(`(?i)(?:https?://(?:www\.)?hongguoduanju\.com)?/video/public/[0-9]{1,32}/[0-9]{3,4}p\.mp4(?:[?#][^"'<>\\\s]*)?`)
-	hongguoWebPublicPathPattern = regexp.MustCompile(`(?i)^/video/public/([0-9]{1,32})/([0-9]{3,4})p\.mp4$`)
-	hongguoWebDurationPattern   = regexp.MustCompile(`(?i)["']?durationSeconds["']?\s*:\s*["']?([0-9]+(?:\.[0-9]+)?)`)
-)
-
 func (d *Downloader) fetchHongguoDramas(ctx context.Context) ([]Drama, error) {
 	initialized := hongguoCatalogInitialized(d.hongguoCatalogSnapshot())
 	dramas, appErr := d.fetchHongguoAppCatalog(ctx)
@@ -57,11 +50,6 @@ func (d *Downloader) fetchHongguoWebDramas(ctx context.Context) ([]Drama, error)
 	for _, route := range routes {
 		route := route
 		go func() {
-			defer func() {
-				if recover() != nil {
-					results <- routeResult{err: errors.New("红果线路处理失败")}
-				}
-			}()
 			dramas, err := d.fetchHongguoRoute(ctx, route.path, route.name)
 			results <- routeResult{dramas: dramas, err: err}
 		}()
@@ -238,147 +226,22 @@ func (d *Downloader) resolveHongguoWebMedia(ctx context.Context, seriesID, video
 		return providerMedia{}, err
 	}
 	page := routerLoaderMap(parseRouterData(body), "player_", "player_page")
-	protectedPlayback := nestedMap(page, "protectedPlayback")
-	pageVideoID := firstNonEmpty(mapString(page, "vid", "video_id", "videoId"), mapString(protectedPlayback, "vid", "video_id", "videoId"))
-	pageSeriesID := firstNonEmpty(mapString(page, "series_id", "seriesId", "seriesID"), mapString(protectedPlayback, "series_id", "seriesId", "seriesID"))
-	if pageVideoID != videoID || pageSeriesID != seriesID {
+	if mapString(page, "vid") != videoID || mapString(page, "series_id") != seriesID {
 		return providerMedia{}, fmt.Errorf("红果未返回所请求的剧集，可能仅允许网页试看；请在站点确认该集的访问权限")
 	}
 	info, _ := page["video_player_info"].(map[string]any)
 	addresses := hongguoMediaAddresses(info)
 	if len(addresses) == 0 {
-		addresses = hongguoWebPublicAddresses(body, videoID)
+		return providerMedia{}, fmt.Errorf("红果该集未提供公开播放地址，可能需要登录或 App 授权；不会将试看集冒充该集下载")
 	}
-	if len(addresses) == 0 {
-		addresses = []string{fmt.Sprintf("%s/video/public/%s/360p.mp4", hongguoBaseURL, videoID)}
-	}
-	duration := hongguoWebPublicDuration(body)
-	if duration <= 0 {
-		seconds, _ := strconv.ParseFloat(mapString(info, "duration"), 64)
-		if seconds > 0 && seconds <= float64((24*time.Hour)/time.Second) {
-			duration = time.Duration(seconds * float64(time.Second))
-		}
-	}
-	media := providerMedia{URL: addresses[0], Referer: d.providerBaseURL(sourceHongguo) + "/", Duration: duration, Quality: hongguoAddressQuality(addresses[0])}
+	duration, _ := strconv.ParseFloat(mapString(info, "duration"), 64)
+	media := providerMedia{URL: addresses[0], Referer: d.providerBaseURL(sourceHongguo) + "/", Duration: time.Duration(duration * float64(time.Second))}
 	for _, address := range addresses {
 		variant := media
-		variant.URL, variant.Quality, variant.Variants = address, hongguoAddressQuality(address), nil
+		variant.URL, variant.Variants = address, nil
 		media.Variants = append(media.Variants, variant)
 	}
 	return media, nil
-}
-
-func hongguoWebPublicAddresses(body, videoID string) []string {
-	if !hongguoNumericID.MatchString(videoID) {
-		return nil
-	}
-	seen := map[string]bool{}
-	var addresses []string
-	add := func(raw string) {
-		raw = strings.TrimSpace(strings.Trim(raw, `"'`))
-		raw = strings.ReplaceAll(raw, `\/`, `/`)
-		if raw == "" {
-			return
-		}
-		parsed, err := url.Parse(raw)
-		if err != nil {
-			return
-		}
-		if parsed.Scheme == "" {
-			base, _ := url.Parse(hongguoBaseURL)
-			parsed = base.ResolveReference(parsed)
-		}
-		if !isProviderHTTPMediaURL(parsed.String()) {
-			return
-		}
-		host := strings.ToLower(parsed.Hostname())
-		if host != "hongguoduanju.com" && host != "www.hongguoduanju.com" {
-			return
-		}
-		match := hongguoWebPublicPathPattern.FindStringSubmatch(parsed.Path)
-		if len(match) != 3 || match[1] != videoID {
-			return
-		}
-		address := parsed.String()
-		if !seen[address] {
-			seen[address] = true
-			addresses = append(addresses, address)
-		}
-	}
-	linkBody := strings.ReplaceAll(body, `\/`, `/`)
-	for _, address := range hongguoWebPublicLinkPattern.FindAllString(linkBody, -1) {
-		add(address)
-	}
-	for _, match := range hongguoJSONLDScriptPattern.FindAllStringSubmatch(body, -1) {
-		if len(match) != 2 {
-			continue
-		}
-		var data any
-		if err := json.Unmarshal([]byte(match[1]), &data); err != nil {
-			continue
-		}
-		var addContentURLs func(any)
-		addContentURLs = func(value any) {
-			switch value := value.(type) {
-			case string:
-				add(value)
-			case []any:
-				for _, nested := range value {
-					addContentURLs(nested)
-				}
-			}
-		}
-		var collect func(any)
-		collect = func(value any) {
-			switch value := value.(type) {
-			case map[string]any:
-				for key, nested := range value {
-					if strings.EqualFold(key, "contentUrl") {
-						addContentURLs(nested)
-						continue
-					}
-					if strings.EqualFold(key, "image") || strings.EqualFold(key, "thumbnailUrl") {
-						continue
-					}
-					collect(nested)
-				}
-			case []any:
-				for _, nested := range value {
-					collect(nested)
-				}
-			}
-		}
-		collect(data)
-	}
-	sort.SliceStable(addresses, func(i, j int) bool {
-		return hongguoAddressQuality(addresses[i]) > hongguoAddressQuality(addresses[j])
-	})
-	return addresses
-}
-
-func hongguoAddressQuality(address string) int {
-	parsed, err := url.Parse(address)
-	if err != nil {
-		return 0
-	}
-	match := hongguoWebPublicPathPattern.FindStringSubmatch(parsed.Path)
-	if len(match) != 3 {
-		return 0
-	}
-	quality, _ := strconv.Atoi(match[2])
-	return quality
-}
-
-func hongguoWebPublicDuration(body string) time.Duration {
-	match := hongguoWebDurationPattern.FindStringSubmatch(body)
-	if len(match) != 2 {
-		return 0
-	}
-	seconds, err := strconv.ParseFloat(match[1], 64)
-	if err != nil || seconds <= 0 || seconds > float64((24*time.Hour)/time.Second) {
-		return 0
-	}
-	return time.Duration(seconds * float64(time.Second))
 }
 
 func hongguoDramaFromAny(v any, category string) Drama {

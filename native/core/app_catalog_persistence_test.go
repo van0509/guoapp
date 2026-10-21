@@ -53,6 +53,15 @@ func reopenCatalogEngine(t *testing.T, directory string, transport sourceFixture
 	engine.downloader.client.Transport = transport
 	engine.downloader.limiter = newRequestLimiter(3, 0)
 	engine.downloader.cfg.Retries = 1
+	engine.downloader.cfg.MaxPagesPerSort = 1
+	return engine
+}
+
+// catalogFixtureEngine 每次目录请求只翻一页，便于逐页检查游标。
+func catalogFixtureEngine(t *testing.T, transport sourceFixtureTransport) *nativeEngine {
+	t.Helper()
+	engine := sourceFixtureEngine(t, transport)
+	engine.downloader.cfg.MaxPagesPerSort = 1
 	return engine
 }
 
@@ -75,7 +84,7 @@ func TestNativeHongguoCursorRestartsPerCatalog(t *testing.T) {
 		return nativeHongguoResponse(request, payload.Offset+18, true, "fixture-"+payload.Scene,
 			strconv.Itoa(base+position+1), strconv.Itoa(base+position+2)), nil
 	})
-	engine := sourceFixtureEngine(t, transport)
+	engine := catalogFixtureEngine(t, transport)
 	for _, input := range []nativeInput{
 		{Source: sourceHongguo, Page: 1},
 		{Source: sourceHongguo, Category: "short_play", Page: 1},
@@ -153,7 +162,7 @@ func TestNativeHongguoCursorRecoversSessionsAfterRestart(t *testing.T) {
 				}
 				return nativeHongguoResponse(request, 36, true, "new-session", "700002", "700003"), nil
 			})
-			engine := sourceFixtureEngine(t, transport)
+			engine := catalogFixtureEngine(t, transport)
 			input := nativeInput{Source: sourceHongguo, Category: "ai_series", Page: 1}
 			if result, err := engine.nativeCatalog(context.Background(), input); err != nil || result.Warning != "" {
 				t.Fatal(err, result.Warning)
@@ -200,7 +209,7 @@ func TestNativeHongguoStalledCursorKeepsPartialItems(t *testing.T) {
 		}
 		return nativeHongguoResponse(request, 18, true, "fixture", "700002"), nil
 	})
-	engine := sourceFixtureEngine(t, transport)
+	engine := catalogFixtureEngine(t, transport)
 	input := nativeInput{Source: sourceHongguo, Category: "ai_series", Page: 1}
 	if _, err := engine.nativeCatalog(context.Background(), input); err != nil {
 		t.Fatal(err)
@@ -263,7 +272,7 @@ func TestNativeCatalogSaveFailureRetriesWithoutAdvancing(t *testing.T) {
 		return nativeHongguoResponse(request, payload.Offset+18, true, "fixture",
 			strconv.Itoa(1001+position), strconv.Itoa(1002+position)), nil
 	})
-	engine := sourceFixtureEngine(t, transport)
+	engine := catalogFixtureEngine(t, transport)
 	input := nativeInput{Source: sourceHongguo, Category: "short_play", Page: 1}
 	if _, err := engine.nativeCatalog(context.Background(), input); err != nil {
 		t.Fatal(err)
@@ -362,7 +371,7 @@ func TestNativeCatalogMetadataSaveExcludesInFlightCursor(t *testing.T) {
 		base := map[string]int{"default": 1000, "comic_series": 2000, "ai_series": 3000}[payload.Scene]
 		return nativeHongguoResponse(request, payload.Offset+18, true, "fixture", strconv.Itoa(base+payload.Offset)), nil
 	})
-	engine := sourceFixtureEngine(t, transport)
+	engine := catalogFixtureEngine(t, transport)
 	if _, err := engine.nativeCatalog(context.Background(), nativeInput{Source: sourceHongguo, Page: 1}); err != nil {
 		t.Fatal(err)
 	}
@@ -450,5 +459,38 @@ func TestNativeSourceRecordSaveFailureAndRetryDuringBackoff(t *testing.T) {
 	restarted = reopenCatalogEngine(t, engine.directory, nil)
 	if restarted.sourceStatus(sourceHongguo).Health.Sample != "新诊断" {
 		t.Fatal("oversized records replaced the previous saved report")
+	}
+}
+
+func TestNativeHongguoInteractiveFirstLoadStopsEarly(t *testing.T) {
+	var calls int
+	transport := sourceFixtureTransport(func(request *http.Request) (*http.Response, error) {
+		payload := nativeHongguoRequestForTest(t, request)
+		calls++
+		base := map[string]int{"default": 1000, "comic_series": 2000, "ai_series": 3000}[payload.Scene]
+		position := payload.Offset / 18
+		return nativeHongguoResponse(request, payload.Offset+18, true, "fixture-"+payload.Scene,
+			strconv.Itoa(base+position*2+1), strconv.Itoa(base+position*2+2)), nil
+	})
+	engine := sourceFixtureEngine(t, transport)
+	engine.downloader.cfg.MaxPagesPerSort = 5
+	for _, check := range []struct {
+		ctx   context.Context
+		input nativeInput
+		calls int
+	}{
+		{context.Background(), nativeInput{Source: sourceHongguo, Page: 1}, 3},
+		{context.Background(), nativeInput{Source: sourceHongguo, Category: "short_play", Page: 1}, 3},
+		{context.Background(), nativeInput{Source: sourceHongguo, Category: "short_play", Page: 2}, 3},
+		{context.WithValue(context.Background(), backgroundCatalogKey{}, true), nativeInput{Source: sourceHongguo, Category: "ai_series", Page: 1}, 5},
+	} {
+		calls = 0
+		result, err := engine.nativeCatalog(check.ctx, check.input)
+		if err != nil || result.Warning != "" || !result.HasMore {
+			t.Fatal("catalog page failed", check.input, err, result.Warning)
+		}
+		if calls != check.calls {
+			t.Fatal("unexpected page requests", check.input, calls)
+		}
 	}
 }

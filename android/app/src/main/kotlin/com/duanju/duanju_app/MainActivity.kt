@@ -26,6 +26,7 @@ import android.provider.Settings
 import android.util.Rational
 import android.view.InputDevice
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.embedding.engine.FlutterShellArgs
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
@@ -67,6 +68,23 @@ class MainActivity : FlutterActivity() {
                 device != null && !device.isVirtual && device.supportsSource(InputDevice.SOURCE_DPAD)
             }
         return remoteNavigation || packageManager.hasSystemFeature(PackageManager.FEATURE_LIVE_TV)
+    }
+
+    private fun renderingPreferences() =
+        getSharedPreferences("duanju_rendering", Context.MODE_PRIVATE)
+
+    private fun compatibleRendering(): Boolean =
+        renderingPreferences().getBoolean("compatibleRendering", false)
+
+    override fun getFlutterShellArgs(): FlutterShellArgs {
+        val args = super.getFlutterShellArgs()
+        if (compatibleRendering()) args.add("--enable-impeller=false")
+        return args
+    }
+
+    private fun restartApplication() {
+        startActivity(Intent.makeRestartActivityTask(ComponentName(this, MainActivity::class.java)))
+        Runtime.getRuntime().exit(0)
     }
 
     override fun setRequestedOrientation(requestedOrientation: Int) {
@@ -223,6 +241,19 @@ class MainActivity : FlutterActivity() {
                             }
                         }
                         "playbackPower" -> result.success(runCatching { playbackPower() }.getOrNull())
+                        "compatibleRendering" -> result.success(compatibleRendering())
+                        "setCompatibleRendering" -> {
+                            val enabled = call.argument<Boolean>("enabled")
+                            if (enabled == null) {
+                                result.error("invalid_rendering_mode", "缺少兼容渲染模式状态", null)
+                            } else if (!renderingPreferences().edit()
+                                    .putBoolean("compatibleRendering", enabled).commit()) {
+                                result.error("rendering_mode_not_saved", "兼容渲染模式未能保存", null)
+                            } else {
+                                result.success(null)
+                                restartApplication()
+                            }
+                        }
                         "vpnActive" -> result.success(runCatching { vpnActive() }.getOrDefault(false))
                         "hasAllFilesAccess" -> result.success(hasAllFilesAccess())
                         "requestStorageAccess" -> {

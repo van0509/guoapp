@@ -1,10 +1,10 @@
 package core
 
 import (
+	"encoding/json"
 	"net/url"
-
 	"regexp"
-
+	"strconv"
 	"strings"
 )
 
@@ -56,3 +56,33 @@ func truncate(s string, n int) string {
 	}
 	return string(r[:n]) + "..."
 }
+
+func mapInt(m map[string]any, keys ...string) int {
+	for _, key := range keys {
+		v, ok := m[key]
+		if !ok {
+			continue
+		}
+		switch x := v.(type) {
+		case json.Number:
+			if n, err := x.Int64(); err == nil {
+				return int(n)
+			}
+			if f, err := x.Float64(); err == nil {
+				return int(f)
+			}
+		case float64:
+			return int(x)
+		case int:
+			return x
+		case int64:
+			return int(x)
+		case string:
+			if n, err := strconv.Atoi(strings.TrimSpace(x)); err == nil {
+				return n
+			}
+		}
+	}
+	return 0
+}
+

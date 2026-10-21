@@ -160,6 +160,8 @@ class _PlayerScreenState extends State<PlayerScreen>
   bool _lastViewportTelevision = false;
   Animation<double>? _routeAnimation;
   double _speed = 1;
+  TelevisionDecoder _televisionDecoder = TelevisionDecoder.optimized;
+  String _videoOutput = '';
   double _aspectRatio = 9 / 16;
   double _resumePosition = 0;
   bool _rotating = false;
@@ -184,6 +186,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     danmaku: _danmakuEnabled,
     preload: _preloadEnabled,
     enhancement: _enhancement.preferences,
+    televisionDecoder: _televisionDecoder,
   );
   String get _qualityLabel => _plan?.local == true
       ? '本地原画'
@@ -267,6 +270,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     _autoAdvance = preferences.autoAdvance;
     _danmakuEnabled = preferences.danmaku;
     _preloadEnabled = preferences.preload;
+    _televisionDecoder = preferences.televisionDecoder;
     _loader = PlaybackLoader(widget.repository);
     _preloader = PlaybackPreloader(widget.repository);
     _danmaku = DanmakuController(widget.repository)
@@ -394,6 +398,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
     _subscriptions.add(
       _player.stream.videoParams.listen((parameters) {
+        unawaited(_recordVideoOutput(parameters));
         final size = videoDisplaySize(parameters);
         if (size != null && mounted && !_closed) {
           setState(() {
@@ -1281,14 +1286,34 @@ class _PlayerScreenState extends State<PlayerScreen>
         }
         final platform = _player.platform;
         if (platform is NativePlayer) {
+          final televisionSurface = _television && Platform.isAndroid;
+          final optimized =
+              _televisionDecoder == TelevisionDecoder.optimized;
           for (final option in {
             'cache-on-disk': 'no',
             'cache-secs': '20',
             'demuxer-readahead-secs': '1',
             'framedrop': 'vo',
             'hr-seek-framedrop': 'yes',
-            'hwdec-codecs': 'h264,hevc,mpeg4,mpeg2video,vp8,vp9,av1,avs3',
+            'hwdec-codecs': televisionSurface
+                ? 'all'
+                : 'h264,hevc,mpeg4,mpeg2video,vp8,vp9,av1,avs3',
             if (Platform.isAndroid) 'ao': 'audiotrack,opensles',
+            if (Platform.isWindows) 'hwdec': 'd3d11va-copy',
+            if (televisionSurface) ...{
+              'hwdec': _televisionDecoder == TelevisionDecoder.software
+                  ? 'no'
+                  : 'mediacodec-copy',
+              'opengl-pbo': optimized ? 'yes' : 'no',
+              'video-latency-hacks': optimized ? 'yes' : 'no',
+              'scale': 'bilinear',
+              'cscale': 'bilinear',
+              'dscale': 'bilinear',
+              'correct-downscaling': 'no',
+              'vd-lavc-skiploopfilter': optimized ? 'all' : 'default',
+              'vd-lavc-skipidct': optimized ? 'all' : 'default',
+              'vd-lavc-threads': '2',
+            },
           }.entries) {
             await platform.setProperty(option.key, option.value);
           }
@@ -1457,6 +1482,8 @@ class _PlayerScreenState extends State<PlayerScreen>
     if (!mounted || _closed || widget.store.profileEpoch != _profileEpoch)
       return;
     final qualityChanged = nextPreferences.quality != _requestedQuality;
+    final decoderChanged =
+        nextPreferences.televisionDecoder != _televisionDecoder;
     _enhancement.setPreferences(nextPreferences.enhancement);
     setState(() {
       _speed = nextPreferences.speed;
@@ -1464,6 +1491,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       _autoAdvance = nextPreferences.autoAdvance;
       _danmakuEnabled = nextPreferences.danmaku;
       _preloadEnabled = nextPreferences.preload;
+      _televisionDecoder = nextPreferences.televisionDecoder;
     });
     _danmaku.setEnabled(_danmakuEnabled);
     _syncDanmaku();
@@ -1473,6 +1501,8 @@ class _PlayerScreenState extends State<PlayerScreen>
     await _interactions.applySpeed();
     if (qualityChanged && _plan?.local != true) {
       await _retry(quality: nextPreferences.quality);
+    } else if (decoderChanged && _plan?.local != true) {
+      await _retry();
     }
   }
 
@@ -1643,11 +1673,40 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
   }
 
+  Future<void> _recordVideoOutput(VideoParams parameters) async {
+    final platform = _player.platform;
+    var hwdec = '';
+    var vo = '';
+    if (platform is NativePlayer) {
+      try {
+        hwdec = await platform.getProperty('hwdec-current');
+        vo = await platform.getProperty('current-vo');
+      } catch (_) {
+        hwdec = '';
+        vo = '';
+      }
+    }
+    if (_closed) return;
+    final summary =
+        '[Video] generation=$_generation television=$_television '
+        'decoder=${_televisionDecoder.name} hwdec=$hwdec vo=$vo '
+        'format=${parameters.pixelformat} hw_format=${parameters.hwPixelformat} '
+        'size=${parameters.w}x${parameters.h}';
+    debugPrint(summary);
+    if (mounted && !_closed && summary != _videoOutput) {
+      setState(() => _videoOutput = summary);
+    }
+  }
+
   Future<void> _televisionSettings(BuildContext context) async {
     if (_panelOpen || _closed) return;
     setState(() => _panelOpen = true);
     TelevisionPlaybackSetting? selection;
     try {
+      final compatibleRendering = _television && Platform.isAndroid
+          ? await AppDevice.compatibleRendering()
+          : null;
+      if (!mounted || _closed) return;
       selection = await showDialog<TelevisionPlaybackSetting>(
         context: context,
         builder: (menuContext) => AnimatedBuilder(
@@ -1668,6 +1727,9 @@ class _PlayerScreenState extends State<PlayerScreen>
               preload: _preloadEnabled,
               preloadStatus: _preloader.status,
               enhancement: _enhancementForUi,
+              decoder: _televisionDecoder,
+              videoOutput: _videoOutput,
+              compatibleRendering: compatibleRendering,
               onCompareEnhancement: () {
                 unawaited(_enhancement.toggleCompare());
                 Navigator.pop(menuContext);
@@ -1680,6 +1742,11 @@ class _PlayerScreenState extends State<PlayerScreen>
       if (mounted && !_closed) setState(() => _panelOpen = false);
     }
     if (selection == null || !mounted || _closed) return;
+    final compatibleRendering = selection.compatibleRendering;
+    if (compatibleRendering != null) {
+      await _switchCompatibleRendering(compatibleRendering);
+      return;
+    }
     try {
       await _setPreferences(
         _preferences.copyWith(
@@ -1689,10 +1756,39 @@ class _PlayerScreenState extends State<PlayerScreen>
           danmaku: selection.danmaku,
           preload: true,
           enhancement: selection.enhancement,
+          televisionDecoder: selection.decoder,
         ),
       );
     } catch (_) {
       _notice('播放偏好未能保存，请重试');
+    }
+  }
+
+  Future<void> _switchCompatibleRendering(bool enabled) async {
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => Theme(
+        data: televisionTheme(AppTheme.dark),
+        child: AlertDialog(
+          title: Text(enabled ? '开启兼容渲染模式？' : '关闭兼容渲染模式？'),
+          content: const Text('需要重启应用才能生效，正在进行的下载会中断。'),
+          actions: [
+            TextButton(
+              autofocus: true,
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('立即重启'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (accepted != true || !mounted || _closed) return;
+    if (!await AppDevice.setCompatibleRendering(enabled)) {
+      _notice('兼容渲染模式未能保存，请重试');
     }
   }
 

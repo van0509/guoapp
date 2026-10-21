@@ -218,7 +218,10 @@ class _DanmakuMotion extends StatefulWidget {
 
 class _DanmakuMotionState extends State<_DanmakuMotion>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _motion = AnimationController(vsync: this);
+  late final AnimationController _motion = AnimationController(
+    vsync: this,
+    animationBehavior: AnimationBehavior.preserve,
+  );
 
   @override
   void initState() {

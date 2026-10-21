@@ -8,6 +8,14 @@ String speedLabel(double value) => value == value.roundToDouble()
     ? value.toInt().toString()
     : value.toString();
 
+enum TelevisionDecoder { optimized, hardware, software }
+
+String televisionDecoderLabel(TelevisionDecoder value) => switch (value) {
+  TelevisionDecoder.optimized => '硬解（默认）',
+  TelevisionDecoder.hardware => '硬解（兼容）',
+  TelevisionDecoder.software => '软解（兼容）',
+};
+
 class PlaybackPreferences {
   const PlaybackPreferences({
     this.speed = 1,
@@ -19,6 +27,7 @@ class PlaybackPreferences {
     this.swipeSeekSeconds = 60,
     this.autoPictureInPicture = true,
     this.enhancement = const VideoEnhancementPreferences(),
+    this.televisionDecoder = TelevisionDecoder.optimized,
   });
 
   final double speed;
@@ -30,6 +39,7 @@ class PlaybackPreferences {
   final int swipeSeekSeconds;
   final bool autoPictureInPicture;
   final VideoEnhancementPreferences enhancement;
+  final TelevisionDecoder televisionDecoder;
 
   PlaybackPreferences copyWith({
     double? speed,
@@ -41,6 +51,7 @@ class PlaybackPreferences {
     int? swipeSeekSeconds,
     bool? autoPictureInPicture,
     VideoEnhancementPreferences? enhancement,
+    TelevisionDecoder? televisionDecoder,
   }) => PlaybackPreferences(
     speed: speed ?? this.speed,
     quality: quality ?? this.quality,
@@ -51,6 +62,7 @@ class PlaybackPreferences {
     swipeSeekSeconds: swipeSeekSeconds ?? this.swipeSeekSeconds,
     autoPictureInPicture: autoPictureInPicture ?? this.autoPictureInPicture,
     enhancement: enhancement ?? this.enhancement,
+    televisionDecoder: televisionDecoder ?? this.televisionDecoder,
   );
 
   Map<String, dynamic> toJson() => {
@@ -63,6 +75,7 @@ class PlaybackPreferences {
     'swipeSeekSeconds': swipeSeekSeconds,
     'autoPictureInPicture': autoPictureInPicture,
     'enhancement': enhancement.toJson(),
+    'televisionDecoder': televisionDecoder.name,
   };
 
   factory PlaybackPreferences.fromJson(Map<String, dynamic> value) {
@@ -74,6 +87,11 @@ class PlaybackPreferences {
     final holdSpeed = (value['holdSpeed'] as num? ?? 2).toDouble();
     final swipeSeekSeconds = value['swipeSeekSeconds'] as int? ?? 60;
     final autoPictureInPicture = value['autoPictureInPicture'] as bool? ?? true;
+    final decoderName = value['televisionDecoder'];
+    final televisionDecoder = TelevisionDecoder.values.firstWhere(
+      (decoder) => decoder.name == decoderName,
+      orElse: () => TelevisionDecoder.optimized,
+    );
     if (!playbackSpeeds.contains(speed) ||
         !holdSpeeds.contains(holdSpeed) ||
         !swipeSeekChoices.contains(swipeSeekSeconds) ||
@@ -91,6 +109,7 @@ class PlaybackPreferences {
       swipeSeekSeconds: swipeSeekSeconds,
       autoPictureInPicture: autoPictureInPicture,
       enhancement: VideoEnhancementPreferences.fromJson(value['enhancement']),
+      televisionDecoder: televisionDecoder,
     );
   }
 }

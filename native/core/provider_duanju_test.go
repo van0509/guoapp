@@ -34,8 +34,8 @@ func TestDuanjuRegistryKeepsDistinctIdentitiesFromExistingSources(t *testing.T) 
 	for _, source := range existing {
 		seen[source] = true
 	}
-	if len(duanjuProviderCatalog) != 27 {
-		t.Fatalf("duanju catalog should register 27 sources, got %d", len(duanjuProviderCatalog))
+	if len(duanjuProviderCatalog) != 26 {
+		t.Fatalf("duanju catalog should register 26 sources, got %d", len(duanjuProviderCatalog))
 	}
 	for _, spec := range duanjuProviderCatalog {
 		if seen[spec.ID] {

@@ -50,7 +50,6 @@ class VideoEnhancementController extends ChangeNotifier {
   }
 
   static const _device = MethodChannel('duanju/device');
-  static const _filterLabel = 'duanju_vsr';
   final Player player;
   late final bool supported;
   final bool _animationHint;
@@ -91,11 +90,9 @@ class VideoEnhancementController extends ChangeNotifier {
   bool _gpu = false;
   bool _luma = false;
   bool _opaque8Bit = false;
-  bool _hardware = false;
   bool _softwareRenderer = false;
   bool _circuitOpen = false;
   String _renderer = '';
-  String _vendor = '';
   String _status = '画质增强已关闭';
   String _downgradeReason = '';
   String _lastFailure = '';
@@ -271,7 +268,6 @@ class VideoEnhancementController extends ChangeNotifier {
       television: _television,
       gpu: _gpu,
       luma: _luma,
-      hardware: _hardware,
       animation: animation,
       power: _power,
       rate: player.state.rate,
@@ -319,20 +315,7 @@ class VideoEnhancementController extends ChangeNotifier {
           final current = _shaderList();
           _ownedShaders.add(shaderPath);
           _mpv!.setStrings('glsl-shaders', [...current, shaderPath]);
-        } else if (selected.backend == VideoEnhancementBackend.hardware) {
-          final parameters = player.state.videoParams;
-          final factor = math
-              .min(
-                selected.output!.width / parameters.w!,
-                selected.output!.height / parameters.h!,
-              )
-              .clamp(1.0, 2.0);
-          _mpv!.command([
-            'vf',
-            'add',
-            '@$_filterLabel:d3d11vpp=scale=${factor.toStringAsFixed(6)}:scaling-mode=$_vendor:format=nv12:deint=no',
-          ]);
-        }
+
       }
       _applied = selected;
       _confirmationMisses = 0;
@@ -345,18 +328,10 @@ class VideoEnhancementController extends ChangeNotifier {
     } finally {
       _applyingBackend = null;
     }
-  }
-
-  String _optionValue(Object? value) => switch (value) {
-    bool flag => flag ? 'yes' : 'no',
-    null => '',
-    _ => value.toString(),
-  };
-
-  void _setOption(String key, String value) {
-    final original = _mpv!.read(key);
+  }  void _setOption(String key, String value) {
+    final original = _mpv!.readString(key);
     if (original == null) throw VideoEnhancementFailure(key);
-    _originalOptions.putIfAbsent(key, () => _optionValue(original));
+    _originalOptions.putIfAbsent(key, () => original);
     _mpv!.set(key, value);
     _appliedOptions[key] = value;
   }
@@ -382,18 +357,9 @@ class VideoEnhancementController extends ChangeNotifier {
     } catch (error) {
       failure = error;
     }
-    try {
-      final filters = _mpv!.read('vf');
-      if (filters is List &&
-          filters.any((item) => item is Map && item['label'] == _filterLabel)) {
-        _mpv!.command(['vf', 'remove', '@$_filterLabel']);
-      }
-    } catch (error) {
-      failure ??= error;
-    }
     for (final entry in _appliedOptions.entries.toList().reversed) {
       try {
-        if (_optionValue(_mpv!.read(entry.key)) == entry.value) {
+        if (_mpv!.readString(entry.key) == entry.value) {
           _mpv!.set(entry.key, _originalOptions[entry.key]!);
         }
         _appliedOptions.remove(entry.key);
@@ -409,15 +375,12 @@ class VideoEnhancementController extends ChangeNotifier {
     final native = _mpv!;
     final vo = native.read('current-vo')?.toString() ?? '';
     final hwdec = native.read('hwdec-current')?.toString() ?? '';
-    final version = native.read('mpv-version')?.toString() ?? '';
-    final versionNumber = RegExp(r'\bv?0\.(\d+)\.').firstMatch(version);
-    final recentMpv =
-        versionNumber != null && (int.tryParse(versionNumber[1]!) ?? 0) >= 39;
     final passes = native.read('vo-passes');
     _gpu =
         !_softwareRenderer &&
         (vo == 'gpu' ||
-            vo == 'libmpv' && (_renderer.isNotEmpty || passes is Map));
+            vo == 'libmpv' &&
+                (Platform.isWindows || _renderer.isNotEmpty || passes is Map));
     final parameters = player.state.videoParams;
     final format = videoEnhancementPixelFormat(parameters);
     _luma =
@@ -448,13 +411,6 @@ class VideoEnhancementController extends ChangeNotifier {
         }
       }
     }
-    _hardware =
-        Platform.isWindows &&
-        _gpu &&
-        recentMpv &&
-        (_vendor == 'nvidia' || _vendor == 'intel') &&
-        hwdec == 'd3d11va' &&
-        (format == 'nv12' || format == 'yuv420p');
   }
 
   void _onLog(PlayerLog log) {
@@ -470,11 +426,6 @@ class VideoEnhancementController extends ChangeNotifier {
         _renderer = log.text.length <= 512
             ? log.text
             : log.text.substring(0, 512);
-        _vendor = text.contains('nvidia')
-            ? 'nvidia'
-            : text.contains('intel')
-            ? 'intel'
-            : '';
       }
       _softwareRenderer =
           _softwareRenderer ||
@@ -489,10 +440,7 @@ class VideoEnhancementController extends ChangeNotifier {
         _circuitOpen)
       return;
     final graphics =
-        prefix.contains('d3d11vpp') ||
-        prefix.contains(_filterLabel) ||
-        prefix.contains('vo/gpu') ||
-        prefix.contains('vo/libmpv');
+        prefix.contains('vo/gpu') || prefix.contains('vo/libmpv');
     final failed =
         log.level == 'error' ||
         log.level == 'fatal' ||
@@ -514,7 +462,7 @@ class VideoEnhancementController extends ChangeNotifier {
         _recentEnhancementErrors.contains(value) ||
         active > 0 &&
             RegExp(
-              r'd3d11vpp|duanju_vsr|glsl.shaders|shader.*compil|compil.*shader',
+              r'glsl.shaders|shader.*compil|compil.*shader',
               caseSensitive: false,
             ).hasMatch(value);
     if (!owned) return false;
@@ -604,9 +552,9 @@ class VideoEnhancementController extends ChangeNotifier {
       await _readPower();
       if (_closed || !_initialized || _circuitOpen || _applyingBackend != null)
         return;
-      final oldCapabilities = (_gpu, _luma, _hardware, _opaque8Bit);
+      final oldCapabilities = (_gpu, _luma, _opaque8Bit);
       _readCapabilities();
-      if (oldCapabilities != (_gpu, _luma, _hardware, _opaque8Bit)) _schedule();
+      if (oldCapabilities != (_gpu, _luma, _opaque8Bit)) _schedule();
       if (!_ready || !_foreground) return;
       final selected = _applied;
       if (selected == null) {
@@ -622,8 +570,7 @@ class VideoEnhancementController extends ChangeNotifier {
         television: _television,
         gpu: _gpu,
         luma: _luma,
-        hardware: _hardware,
-        animation: animation,
+          animation: animation,
         power: _power,
         rate: player.state.rate,
         costLimit: _costLimit,
@@ -662,6 +609,10 @@ class VideoEnhancementController extends ChangeNotifier {
           (surfaceWidth - selected.output!.width).abs() <= 2 &&
           (surfaceHeight - selected.output!.height).abs() <= 2;
       final effectFound = switch (selected.backend) {
+        VideoEnhancementBackend.ravu ||
+        VideoEnhancementBackend.anime ||
+        VideoEnhancementBackend.fsrcnnx when passes is! Map =>
+          _shaderList().any(_ownedShaders.contains),
         VideoEnhancementBackend.ravu => descriptions.contains(
           _luma ? 'RAVU-Lite-AR (step2' : 'RAVU (step4',
         ),
@@ -671,7 +622,6 @@ class VideoEnhancementController extends ChangeNotifier {
         VideoEnhancementBackend.fsrcnnx =>
           descriptions.contains('feature map') &&
               descriptions.contains('aggregation'),
-        VideoEnhancementBackend.hardware => _hardwareFramesChanged(selected),
         _ => _gpu,
       };
       final wasConfirmed = _confirmed;
@@ -699,23 +649,6 @@ class VideoEnhancementController extends ChangeNotifier {
         _previousSample = null;
       }
     }
-  }
-
-  bool _hardwareFramesChanged(VideoEnhancementDecision selected) {
-    final output = _mpv!.read('video-out-params');
-    final filters = _mpv!.read('vf');
-    if (output is! Map || filters is! List || selected.output == null)
-      return false;
-    final width = (output['w'] as num?)?.toDouble() ?? 0;
-    final height = (output['h'] as num?)?.toDouble() ?? 0;
-    return filters.any(
-          (item) =>
-              item is Map &&
-              item['label'] == _filterLabel &&
-              item['enabled'] != false,
-        ) &&
-        (width - selected.output!.width).abs() <= 4 &&
-        (height - selected.output!.height).abs() <= 4;
   }
 
   bool _isOwnPass(
@@ -790,12 +723,7 @@ class VideoEnhancementController extends ChangeNotifier {
     }
     _overloadedSince ??= now;
     if (now.difference(_overloadedSince!) < const Duration(seconds: 10)) return;
-    _costLimit = math.min(
-      _costLimit,
-      selected.backend == VideoEnhancementBackend.hardware
-          ? 2
-          : selected.backend.cost - 1,
-    );
+    _costLimit = math.min(_costLimit, selected.backend.cost - 1);
     _downgradeReason = '本集已为保持流畅降低增强';
     ignorePerformance();
     _schedule(immediate: true);
@@ -814,8 +742,6 @@ class VideoEnhancementController extends ChangeNotifier {
       );
     } else if (!_confirmed) {
       _setStatus('正在确认${selected.backend.label}');
-    } else if (selected.backend == VideoEnhancementBackend.hardware) {
-      _setStatus('硬件增强已接入，驱动效果以对比为准');
     } else {
       _setStatus(
         [

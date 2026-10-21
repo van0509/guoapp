@@ -284,7 +284,7 @@ func (engine *nativeEngine) updateSource(ctx context.Context, source, operation 
 	}()
 	if operation == "update" {
 		engine.changeSourceRecord(source, func(record *nativeSourceRecord) { record.Stage = "查找新剧" })
-		if err := engine.loadSourceCatalogCategories(ctx, source, 1, true); err != nil {
+		if err := engine.loadSourceCatalogCategories(ctx, source, 0, true); err != nil {
 			return err
 		}
 	}

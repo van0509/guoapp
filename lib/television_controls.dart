@@ -556,6 +556,8 @@ class TelevisionPlaybackSetting {
     this.danmaku,
     this.preload,
     this.enhancement,
+    this.decoder,
+    this.compatibleRendering,
   });
   final double? speed;
   final int? quality;
@@ -563,6 +565,8 @@ class TelevisionPlaybackSetting {
   final bool? danmaku;
   final bool? preload;
   final VideoEnhancementPreferences? enhancement;
+  final TelevisionDecoder? decoder;
+  final bool? compatibleRendering;
 }
 
 class TelevisionSettingsDialog extends StatelessWidget {
@@ -582,6 +586,9 @@ class TelevisionSettingsDialog extends StatelessWidget {
     this.preloadStatus = '',
     this.enhancement,
     this.onCompareEnhancement,
+    this.decoder = TelevisionDecoder.optimized,
+    this.videoOutput = '',
+    this.compatibleRendering,
   });
   final double speed;
   final int quality;
@@ -597,6 +604,9 @@ class TelevisionSettingsDialog extends StatelessWidget {
   final String preloadStatus;
   final VideoEnhancementController? enhancement;
   final VoidCallback? onCompareEnhancement;
+  final TelevisionDecoder decoder;
+  final String videoOutput;
+  final bool? compatibleRendering;
 
   @override
   Widget build(BuildContext context) => AlertDialog(
@@ -650,6 +660,48 @@ class TelevisionSettingsDialog extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 20),
+            const Text('解码方式', style: TextStyle(fontSize: 18)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final value in TelevisionDecoder.values)
+                  RemoteButton(
+                    key: ValueKey('tv-decoder-${value.name}'),
+                    label: televisionDecoderLabel(value),
+                    selected: value == decoder,
+                    onPressed: () => Navigator.pop(
+                      context,
+                      TelevisionPlaybackSetting(decoder: value),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '有声音没画面或颜色异常时可切换尝试',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 20),
+            if (compatibleRendering != null) ...[
+              RemoteButton(
+                key: const ValueKey('tv-compatible-rendering'),
+                label: compatibleRendering! ? '兼容渲染模式：开' : '兼容渲染模式：关',
+                onPressed: () => Navigator.pop(
+                  context,
+                  TelevisionPlaybackSetting(
+                    compatibleRendering: !compatibleRendering!,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                '切换解码方式仍没画面时可尝试，需重启应用生效',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 20),
+            ],
             if (enhancement != null)
               VideoEnhancementSettings(
                 controller: enhancement!,
@@ -699,6 +751,15 @@ class TelevisionSettingsDialog extends StatelessWidget {
             const SizedBox(height: 8),
             Text(preloadStatus, style: const TextStyle(fontSize: 14)),
             const SizedBox(height: 20),
+            if (videoOutput.isNotEmpty) ...[
+              const Text('视频输出诊断', style: TextStyle(fontSize: 14)),
+              const SizedBox(height: 4),
+              Text(
+                videoOutput,
+                style: const TextStyle(fontSize: 12, color: Colors.white54),
+              ),
+              const SizedBox(height: 20),
+            ],
             RemoteButton(
               label: favorite ? '取消追剧' : '加入追剧',
               icon: favorite

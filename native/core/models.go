@@ -74,6 +74,8 @@ type Chapter struct {
 	MediaSize      int64           `json:"mediaSize"`
 	PageURL        string          `json:"pageUrl,omitempty"`
 	Referer        string          `json:"referer,omitempty"`
+	// Vertical 红果 App 接口标记该集为竖屏内容。
+	Vertical *bool `json:"vertical,omitempty"`
 }
 
 func (c Chapter) EpisodeString(fallback int) string {

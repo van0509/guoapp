@@ -11,8 +11,7 @@ enum VideoEnhancementBackend {
   scaling(1, '高质量缩放'),
   ravu(2, '轻量增强'),
   fsrcnnx(3, '通用神经超分'),
-  anime(3, '动漫神经超分'),
-  hardware(4, '硬件增强');
+  anime(3, '动漫神经超分');
 
   const VideoEnhancementBackend(this.cost, this.label);
   final int cost;
@@ -130,7 +129,6 @@ VideoEnhancementDecision chooseVideoEnhancement({
   required bool television,
   required bool gpu,
   required bool luma,
-  required bool hardware,
   required bool animation,
   required VideoEnhancementPower power,
   required double rate,
@@ -234,17 +232,6 @@ VideoEnhancementDecision chooseVideoEnhancement({
       (pixels * 8 * 18 + output.width * output.height * 8 * 3) / (1024 * 1024);
   final neuralSize = !android;
   final neural = neuralSize && neuralMemory <= memory && rate < 1.5;
-  if (preferences.mode == VideoEnhancementMode.quality &&
-      !animation &&
-      hardware &&
-      !power.onBattery &&
-      allowed(VideoEnhancementBackend.hardware)) {
-    return VideoEnhancementDecision(
-      VideoEnhancementBackend.hardware,
-      output,
-      '驱动增强效果以原画对比为准',
-    );
-  }
   if (animation && neural && allowed(VideoEnhancementBackend.anime)) {
     return VideoEnhancementDecision(VideoEnhancementBackend.anime, output, '');
   }

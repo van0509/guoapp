@@ -241,7 +241,7 @@ func (engine *nativeEngine) nativeLibraryImport(document nativeLibraryExchange) 
 				continue
 			}
 			before := previous[position]
-			merged := mergeNativeDrama(drama, before)
+			merged := mergeLibraryImportDrama(before, drama)
 			if !reflect.DeepEqual(merged, before) {
 				previous[position] = merged
 				changed = true
@@ -320,3 +320,44 @@ func nativeLibraryImportXZ(payload string) (nativeLibraryExchange, error) {
 	}
 	return document, nil
 }
+
+func mergeLibraryImportDrama(existing, incoming nativeDrama) nativeDrama {
+	merged := existing
+	if merged.Title == "" || merged.Title == "短剧" {
+		merged.Title = incoming.Title
+	}
+	if merged.Description == "" {
+		merged.Description = incoming.Description
+	}
+	if merged.Cover == "" {
+		merged.Cover = incoming.Cover
+	}
+	if merged.Category == "" || nativeGenericCategory(merged.Category) {
+		if incoming.Category != "" && !nativeGenericCategory(incoming.Category) {
+			merged.Category = incoming.Category
+		}
+	}
+	if merged.Episodes == 0 {
+		merged.Episodes = incoming.Episodes
+	}
+	if merged.VIP == nil {
+		merged.VIP = incoming.VIP
+	}
+	if merged.Heat == "" {
+		merged.Heat = incoming.Heat
+	}
+	if merged.Views == "" {
+		merged.Views = incoming.Views
+	}
+	if merged.OnlineDate == "" {
+		merged.OnlineDate = incoming.OnlineDate
+	}
+	if len(merged.Tags) == 0 {
+		merged.Tags = incoming.Tags
+	}
+	if merged.ReleaseStatus == "" || merged.ReleaseStatus == "unknown" {
+		merged.ReleaseStatus = incoming.ReleaseStatus
+	}
+	return merged
+}
+

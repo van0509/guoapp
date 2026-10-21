@@ -1,8 +1,8 @@
 # 红果鉴 / 真果鉴
 
-Flutter 多端独立短剧应用，原名“短剧库 APP”。站源请求、解析、下载和播放均在设备上完成，不依赖旧项目或自建服务。当前源码版本：**0.2.158+2171（未验证开发快照）**。本轮修复电视模式下的三处遥控问题：右上角“更多 / 站源”等玻璃菜单打开后没有可见选中项，焦点所在行没有任何边框或底色；设置等列表向下移动时页面跟随滚动、向上移动时页面不动；以及返回键在没有可返回层级时直接把应用退出。同时把电视模式下无法聚焦的分段按钮与筛选标签换成遥控可聚焦控件，并补齐下载页、追剧页头部到左侧导航的焦点出口。上一轮同步上游红果接口修复，并把上游的发布签名修正并入本项目已有的签名校验方案：红果 App 播放器请求在既有 X-Gorgon / X-Khronos 之外补齐 X-Argus / X-Ladon 签名，播放响应同时兼容 JSON 与 Base64 JSON 编码的 `video_model` 和直接返回的扁平 `video_list`；红果官网回退解析改读 `protectedPlayback`、video_id / series_id 的多种字段名，并从 JSON-LD `TVEpisode.contentUrl` 与页面链接中提取 `/video/public/{vid}/{quality}p.mp4` 地址。0.2.156 修复电视模式输入框困住遥控焦点的问题：追剧与历史记录页的搜索框、以及其余电视可达的输入框此前都会吃掉方向键，焦点进得去出不来，输入框末尾的一键清除按钮也无法用遥控器选中；现在输入框自己接管方向键（右移选中一键清除、左移回到输入框、上下按出口回调或方向遍历离开）并在应用根部为所有页面与弹窗补上方向键兜底。0.2.155 的直播入口分级与激活码变更、0.2.152 的电视模式搜索、0.2.151 的确认键提交、0.2.150 的 Android 6 独立兼容版构建入口、红果鉴与真果鉴独立 Android 包名和发布签名继续保留；完整主版本的直播、推荐与搜索缓存、剧库导入导出、播放器生命周期与玻璃界面、网络出口切换、屏幕常亮、观看统计、断点续传与新增站源解析等功能继续保留。
+Flutter 多端独立短剧应用，原名“短剧库 APP”。站源请求、解析、下载和播放均在设备上完成，不依赖旧项目或自建服务。当前源码版本：**0.2.160+2173（未验证开发快照）**。本轮移植上游 [Xanerix/guoapp](https://github.com/Xanerix/guoapp) 的五项播放改动：电视端新增三档解码方式与 `[Video]` 视频输出诊断，Windows 硬解固定 `d3d11va-copy` 修掉右侧或底部绿边，系统关闭动画时弹幕不再飞得过快，Windows 画质增强按上游移除 d3d11vpp 硬件档并修掉着色器按 CRLF 存放导致哈希校验失败、增强必然回落原画的问题，电视端新增兼容渲染模式开关。0.2.159 同步上游仓库 2026-10-21 的三个提交：红果播放器请求签名整段重写，X-Gorgon / X-Khronos 改由请求 query 与 body 的 MD5 前 4 字节加固定密钥重算，并补上 X-SS-STUB 与 X-SS-Req-Ticket，X-Argus 的设备号改取请求参数、X-Ladon 负载加入固定 build 号；新增设备注册请求与失败暂停、换号重注册的支撑代码；推荐新增 `home_feed` 与 `find_drama` 两个 bookmall tab 流、列表每页条数从 18 改为 54；剧库导入改为字段级合并，分集补上竖屏标记。上游同一轮回收了 0.2.157 并入的红果官网公开地址提取，官网回退现在只接受 `vid` / `series_id` 与请求一致且带 `video_player_info` 地址的响应。0.2.158 修复电视模式下的三处遥控问题：右上角“更多 / 站源”等玻璃菜单打开后没有可见选中项，焦点所在行没有任何边框或底色；设置等列表向下移动时页面跟随滚动、向上移动时页面不动；以及返回键在没有可返回层级时直接把应用退出。同时把电视模式下无法聚焦的分段按钮与筛选标签换成遥控可聚焦控件，并补齐下载页、追剧页头部到左侧导航的焦点出口。上一轮同步上游红果接口修复，并把上游的发布签名修正并入本项目已有的签名校验方案：红果 App 播放器请求在既有 X-Gorgon / X-Khronos 之外补齐 X-Argus / X-Ladon 签名，播放响应同时兼容 JSON 与 Base64 JSON 编码的 `video_model` 和直接返回的扁平 `video_list`；红果官网回退解析改读 `protectedPlayback`、video_id / series_id 的多种字段名，并从 JSON-LD `TVEpisode.contentUrl` 与页面链接中提取 `/video/public/{vid}/{quality}p.mp4` 地址，该网页地址提取已由本轮并入的上游提交回收，官网回退只保留目录页与严格匹配的 `video_player_info` 地址。0.2.156 修复电视模式输入框困住遥控焦点的问题：追剧与历史记录页的搜索框、以及其余电视可达的输入框此前都会吃掉方向键，焦点进得去出不来，输入框末尾的一键清除按钮也无法用遥控器选中；现在输入框自己接管方向键（右移选中一键清除、左移回到输入框、上下按出口回调或方向遍历离开）并在应用根部为所有页面与弹窗补上方向键兜底。0.2.155 的直播入口分级与激活码变更、0.2.152 的电视模式搜索、0.2.151 的确认键提交、0.2.150 的 Android 6 独立兼容版构建入口、红果鉴与真果鉴独立 Android 包名和发布签名继续保留；完整主版本的直播、推荐与搜索缓存、剧库导入导出、播放器生命周期与玻璃界面、网络出口切换、屏幕常亮、观看统计、断点续传与新增站源解析等功能继续保留。
 
-按用户 2026-09-21 的要求，继续暂停整体验证。0.2.51 的 GitHub Actions 构建、打包和 Release 记录保留；本次同步上游红果接口修复与 Android 发布签名修正，checks、构建矩阵和 Release 上传流程保持原有规则。0.2.158+2171 等待 GitHub Actions 远程构建；本轮电视焦点与返回键修复只完成源码，未在 Android TV 与遥控器上验证。0.2.157+2170 的红果 App 播放取流签名、播放响应格式兼容与红果网页取流恢复同样只完成源码，未在红果手机、Android TV 与 Windows 上做连续选集播放验证。启动、榜单、画质增强、站源改名、画中画、连续播放控制栏、红果系列剧提醒、播放器 Tab 化、首页 / 播放页优化、多站源站源修复、十二个新增站源、直播、推荐、剧库传输、播放器生命周期、历史记录批量删除、设备互联和 Android 6 兼容版均保留未验证快照状态。
+按用户 2026-09-21 的要求，继续暂停整体验证。0.2.51 的 GitHub Actions 构建、打包和 Release 记录保留；本次移植上游电视端解码方式、Windows 硬解与画质增强修正，checks、构建矩阵和 Release 上传流程保持原有规则。0.2.160+2173 等待 GitHub Actions 远程构建；本轮移植只完成源码，没有构建，也没有在电视、盒子与 Windows 上验证解码档位、兼容渲染模式、`d3d11va-copy` 与着色器增强。0.2.159+2172 的上游同步只完成源码与逐字比对，未联网验证红果取流、设备注册与推荐流。0.2.158+2171 的电视焦点与返回键修复同样只完成源码，未在 Android TV 与遥控器上验证。0.2.157+2170 的红果 App 播放取流签名、播放响应格式兼容与红果网页取流恢复同样只完成源码，未在红果手机、Android TV 与 Windows 上做连续选集播放验证。启动、榜单、画质增强、站源改名、画中画、连续播放控制栏、红果系列剧提醒、播放器 Tab 化、首页 / 播放页优化、多站源站源修复、十二个新增站源、直播、推荐、剧库传输、播放器生命周期、历史记录批量删除、设备互联和 Android 6 兼容版均保留未验证快照状态。
 
 | 编译方式 | 应用名称 | 可用站源 |
 | --- | --- | --- |
@@ -58,13 +58,40 @@ Flutter 多端独立短剧应用，原名“短剧库 APP”。站源请求、�
 
 站源可用性、清晰度和区域限制取决于源站及网络；应用不解除源站 VIP 或其他授权限制。
 
+### 上游电视端解码与 Windows 画质增强移植（0.2.160+2173）
+
+上游 [Xanerix/guoapp](https://github.com/Xanerix/guoapp) 在 2026-10-15 至 10-17 推送的五项播放改动已移植到本项目，改动全部在 Flutter 与 Android 层：
+
+- 电视端解码方式（`lib/playback_preferences.dart`、`lib/player_screen.dart`、`lib/television_controls.dart`）：播放设置新增「硬解（默认）/ 硬解（兼容）/ 软解（兼容）」三档，分别对应 `mediacodec-copy`、关掉 `opengl-pbo` 与跳过滤波的 `mediacodec-copy`、以及 `hwdec=no` 纯软解；同时把电视端 `hwdec-codecs` 放宽为 `all`，`scale` / `cscale` / `dscale` 固定 `bilinear`，`vd-lavc-threads` 固定 2。切换档位后从当前分集重新取流。电视播放会记录一行 `[Video] generation=... hwdec=... vo=... format=... hw_format=... size=...`，最近一次结果同时显示在播放设置的「视频输出诊断」里，用来区分硬解输出格式问题与纹理回退。
+- Windows 硬解（`lib/player_screen.dart`）：Windows 下显式设置 `hwdec=d3d11va-copy`，此前从不设置、依赖 mpv 默认值，部分显卡会出现右侧或底部绿边。
+- 弹幕（`lib/danmaku_overlay.dart`）：弹幕动画控制器改为 `AnimationBehavior.preserve`，系统关闭动画或把动画缩放设为 0 时弹幕不再整片瞬移。
+- Windows 画质增强（`lib/video_enhancement.dart`、`lib/video_enhancement_mpv.dart`、`lib/video_enhancement_policy.dart`）：按上游删除 d3d11vpp 硬件增强档与 `duanju_vsr` 滤镜链，属性读取改用 `mpv_get_property_string`，GPU 判定不再依赖 `mpv-version`，`vo-passes` 不是 map 时用 `glsl-shaders` 列表确认增强是否生效。同时修掉一个确定性缺陷：`assets/video_enhancement` 下四个着色器此前按 CRLF 存放，与 `manifest.json` 的字节数和 sha256 不符，`VideoEnhancementAssets._prepare` 直接抛「增强资源校验失败」，Windows 上画质增强必然回落原画；四个文件已统一为 LF 并复核哈希，`.gitattributes` 增加 `*.glsl` 与 `*.hook` 的 LF 规则。
+- 兼容渲染模式（`android/app/src/main/kotlin/com/duanju/duanju_app/MainActivity.kt`、`lib/app_layout.dart`、`lib/main.dart`、`lib/player_screen.dart`、`lib/television_controls.dart`）：电视端播放设置新增「兼容渲染模式」开关，开启后写入 `duanju_rendering` 偏好，启动时追加 `--enable-impeller=false`；切换会提示「需要重启应用才能生效，正在进行的下载会中断」并立即重启进程，启动日志同时打印当前渲染后端。该开关只在 Android 上可用，是解码档位仍然无画面时的兜底。
+
+本轮只完成源码移植，没有构建，也没有在电视、盒子和 Windows 上验证；解码三档与渲染开关均待实机确认。上游其余提交经比对不适用于本项目：签名补全与设备注册换号已是同一最终形态，推荐 feed、竖屏标记与 54 条分页已在 0.2.159 并入，黄果 AI 分集的分集键已带 `video/{sourceID}` 段，野果的接口地址、脚本地址与中转站发现已存在，minSdk、电视搜索框焦点、返回键与 CI 检查项的差异另有实现。
+
+### 上游 2026-10-21 提交同步（0.2.159+2172）
+
+上游 [xiaoguan521/guoapp](https://github.com/xiaoguan521/guoapp) 当天推送三个提交：`f4f723c`「upgrade Hongguo playback with preload model, spade_a decryption and device registration」、`b37c85c`「import resource_settings and format sources_screen.dart」、`0a16919`「align with latest guoapp3 for accurate Argus/Ladon sign and clean playback flow」。第三个提交把前一个提交的预加载模型与 spade_a 解密整段回收，删除 `native/core/provider_hongguo_multi_media.go`、`native/core/provider_hongguo_spade.go` 与对应测试，生产代码里的设备注册调用点也一并移除。因此本轮按最终形态合并：依次应用三个提交，再回退被回收的文件，最终 19 个生产与测试文件与上游 `0a16919` 逐字一致。
+
+- 播放签名（`native/core/provider_hongguo_player_sign.go`）：`signHongguoPlayerRequest` 不再接收 `installID` 与 nonce，改由 `http.Request` 自行取 query；X-Gorgon 用 `md5(query)` 与 `md5(body)` 的前 4 字节加固定 20 字节密钥做位移 / 反转 / 异或变换，前缀固定 `84 04 40 1c 00 00`；新增 `X-SS-STUB`（body MD5 大写十六进制）与 `X-SS-Req-Ticket`（毫秒时间戳）。X-Argus 第 5 字段改用请求里的 `device_id`，X-Ladon 负载改为 `stamp + "-1611921764-" + aid`。`native/core/provider_hongguo_app.go` 只在非评论、且路径不是 bookmall tab 时签名。
+- 设备注册（新文件 `native/core/provider_hongguo_device.go`）：向 `https://log.snssdk.com/service/2/device_register/` 提交伪造设备头，取回 `device_id` 与 `install_id`，失败后暂停 10 分钟，换号重注册最多轮换 3 次。上游最终提交中没有生产调用者，当前只有 `provider_hongguo_device_test.go` 覆盖，作为后续接入的支撑代码保留。
+- 推荐流（`native/core/provider_hongguo_recommendations.go`）：新增 `/reading/bookapi/bookmall/tab/v1/` 与 `home_feed`、`find_drama` 两个 feed，普通推荐分页条数从 18 提到 54。
+- 剧库导入（`native/core/app_library_exchange.go`）：`mergeNativeDrama` 改名为 `mergeLibraryImportDrama`，从整条替换改为按标题、简介、封面、分类、分集、VIP、热度、播放量、上线时间、标签、更新状态逐字段补齐。
+- 竖屏标记：Go 侧 `Chapter.Vertical` 与 Dart 侧 `Episode.vertical` 同步新增，用于识别竖屏短剧分集。
+- 站源更新（`native/core/app_sources.go`）：分类列表起始页从 1 改为 0。
+- 官网回退收紧（`native/core/provider_hongguo.go`）：删除 JSON-LD `contentUrl`、页面链接与 `/video/public/...` 的公开地址提取，`resolveHongguoWebMedia` 要求页面 `vid` 与 `series_id` 都与请求一致，取不到 `video_player_info` 地址时直接报「红果该集未提供公开播放地址，可能需要登录或 App 授权」；目录页回退保留。
+- 其余并入：`native/core/helpers.go` 新增 `mapInt`，`provider_hongguo_sign.go` 清理旧签名实现（-34 行），`provider_hongguo_app.go` 抽出 `hongguoAppQuery` 并对空响应带 `lastErr` 重试，`lib/sources_screen.dart` 与 `lib/resource_settings.dart` 为 import 与格式整理。
+
+本轮只做源码同步与逐字比对，没有构建、运行测试或联网验证；上游 README 与 `pubspec.yaml` 的版本改动未套用，本项目版本按自己的节奏递增到 0.2.159+2172。
+
 ### 真果鉴 Android 安装图标修正（上游 0.2.152+2165，本项目 0.2.157+2170 同步）
 
 上游修正的 Android 应用级图标原先固定指向通用播放图形。真果鉴的彩色果实图标只用于启动器别名，因此安装器展示应用信息时仍显示通用图形。现在全站源版将应用级 `icon` 与 `roundIcon` 都指向真果鉴图标，默认红果鉴仍使用现有图标。本次合并已把 `android/app/src/main/AndroidManifest.xml` 的 `${appIcon}` 占位符与 `android/app/build.gradle.kts` 的 `manifestPlaceholders["appIcon"]` 一并并入。
 
 本轮只完成源码与 README 更新，没有构建或运行测试；修正后的安装界面和桌面图标仍待 Android 实机确认。
 
-### 上游红果接口修复同步（0.2.157+2170）
+### 上游红果接口修复同步（0.2.157+2170，签名与官网提取已由 0.2.159 取代）
 
 本项目新增上游仓库 [xiaoguan521/guoapp](https://github.com/xiaoguan521/guoapp) 为 `upstream` 远端并合并其红果接口修复。上游修复由三部分组成，均已并入本项目源码：
 
@@ -90,7 +117,7 @@ Flutter 多端独立短剧应用，原名“短剧库 APP”。站源请求、�
 
 本轮只完成源码和 README 更新，没有构建、运行测试或进行连续播放设备验证；红果手机、Android TV、Windows 与 iOS 均待集中验证。
 
-### 红果在线播放解析修复（上游 0.2.151+2164，本项目 0.2.157+2170 同步）
+### 红果在线播放解析修复（上游 0.2.151+2164，本项目 0.2.157+2170 同步，官网公开地址提取已由 0.2.159 回收）
 
 参考 [guoapp3 的红果修复记录](https://github.com/wokaotianshi123/guoapp3#readme)，红果 App 取流接口会返回空体或未知异常，而官网播放页已从旧的 `video_player_info` 结构迁到 `protectedPlayback`；网页公开媒体地址现在位于 JSON-LD `TVEpisode.contentUrl`，并采用 `/video/public/{vid}/{quality}p.mp4` 路径。此前上游网页回退只读取旧字段，因而 App 取流失败后仍无法得到媒体地址。
 
@@ -378,6 +405,10 @@ exports/
 支持专用播放 / 暂停、上一集、下一集按键。播放中无操作 5 秒后隐藏控制条，暂停和操作弹窗时保持可见。竖屏视频保持原比例，不裁剪填满电视。
 
 0.2.55 补齐首页分类栏、站源侧栏、榜单、下载合集、设置、详情选集和批量操作之间的显式焦点出口；新增遥控列表、横向工具行、整行焦点条目和电视选项对话框。手机、电脑和 Windows 分支不改变原有布局。方向键串联、长按连续移动、返回后的焦点恢复仍待 Android TV 实机验证。
+
+0.2.160 移植上游 Xanerix/guoapp 的电视端与 Windows 播放改动，本项目自身改动全部保留。电视端播放设置新增三档解码方式，硬解默认 / 硬解兼容 / 软解兼容，分别对应 mediacodec-copy、关掉 PBO 上传与跳过滤波的 mediacodec-copy、以及 hwdec=no；切换后从当前分集重新取流，并在播放设置里显示最近一次 `[Video]` 输出诊断（hwdec、vo、像素格式、硬件像素格式与分辨率），用来判断偏色或黑屏出在硬解输出格式还是纹理回退。Windows 显式设置 hwdec=d3d11va-copy，修掉部分显卡右侧或底部的绿边。弹幕动画控制器改为 AnimationBehavior.preserve，系统关闭动画时不再整片瞬移。画质增强按上游删除 d3d11vpp 硬件档与 duanju_vsr 滤镜链，属性读取改用 mpv_get_property_string，并修掉四个着色器按 CRLF 存放、manifest 哈希校验失败导致 Windows 增强必然原画的问题。电视端新增兼容渲染模式开关，开启后以 --enable-impeller=false 启动并重启进程生效。待电视、盒子与 Windows 实机验证。
+
+0.2.159 同步上游 2026-10-21 的三个提交，本项目自身改动全部保留。上游最终形态重写了红果播放器签名：`signHongguoPlayerRequest` 改为只接收请求、请求体与时间，X-Gorgon / X-Khronos 由 query 与 body 的 MD5 前 4 字节加固定密钥重算，补上 `X-SS-STUB` 与 `X-SS-Req-Ticket`，X-Argus 的设备号改取请求参数，X-Ladon 负载加入固定 build 号；评论接口与 bookmall tab 继续不签名。同时并入设备注册接口与失败暂停、换号重注册（生产链路暂无调用者，仅测试覆盖），推荐新增 `home_feed` 与 `find_drama` 两个 bookmall tab 流并把每页条数从 18 提到 54，剧库导入改为字段级合并 `mergeLibraryImportDrama`，分集补 `vertical` 竖屏标记，站源更新分类起始页从 1 改为 0。上游同一轮回收了 0.2.157 并入的官网公开地址提取，`resolveHongguoWebMedia` 现在要求页面 `vid` 与 `series_id` 都与请求一致，取不到 `video_player_info` 地址时报「红果该集未提供公开播放地址，可能需要登录或 App 授权」，目录页回退保留。上游 README 与 `pubspec.yaml` 的版本改动未套用。只完成源码与逐字比对，未构建、未联网验证。待红果手机、Android TV 与 Windows 连续选集验证。
 
 0.2.158 修复电视模式下报出的三个遥控问题，并顺带检查了同类写法。第一处是顶部“更多”与站源切换菜单打开后看不到焦点落点：玻璃菜单此前只有条目自带 `selected` 时才自动聚焦，而“更多”的六个条目都没有选中状态，剩下唯一的焦点提示是 `InkWell` 一层很淡的 `primary` 叠加色，电视上看不出来。现在电视模式下菜单改用遥控列表渲染，打开即聚焦当前选中项，没有选中项时聚焦第一条可用条目，焦点行显示 3 像素亮色边框与容器底色，禁用条目仍可被聚焦但确认无动作，方向键不会卡住。第二处是设置等列表向下移动会跟随滚动、向上移动不动：根因是遥控控件获得焦点后统一调用 `Scrollable.ensureVisible` 且传入 `keepVisibleAtEnd`，该策略会把目标偏移量夹在当前偏移量之后，只能露出视口下方的条目，向上永远不滚动；而遥控列表和网格在条目已构建时又会跳过自身的跳转逻辑，于是向上移动只换焦点不动画面。现在改为新的 `revealRemoteFocus`：按焦点控件相对视口的起止偏移判断方向，在视口上方就对齐顶部、在下方就对齐底部，两端都在视口内则不动，向上向下都会跟随。第三处是返回键直接退出应用：首页 `PopScope` 的 `canPop` 只在主页且无搜索词时为真，其余情况由回调把焦点送回左侧导航，但弹窗、系统返回与方向键兜底可能对同一次按键派发两次，第二次已经落在可弹出状态，根路由弹出后 `WidgetsBinding.handlePopRoute` 只好走 `SystemNavigator.pop()` 结束进程。现在首页 `PopScope` 固定 `canPop: false`，返回键统一交给应用自己处理：150 毫秒内的重复派发直接忽略，多选、搜索词、非主页标签依次退让，到主页后第一次只提示、3 秒内再按才真正退出。同时给下载页补上到左侧导航的焦点出口，追剧页的“追剧 / 历史”分段按钮与状态筛选标签在电视模式下改为遥控按钮行，否则这些头部控件在电视上既无焦点样式也回不到导航。待 Android TV 实机验证。
 
@@ -688,14 +719,14 @@ SR-1、SR-2 与 SR-4 已接入源码，小型动漫 CNN 也包含在本轮；SR-
 
 ## 安装包与平台状态
 
-0.2.158+2171 本轮只更新源码，尚未重新构建安装包；0.2.51+57 已由现有 GitHub Actions 完成红果鉴与真果鉴两版 Android 三种 ABI、Windows x64 ZIP 和未签名 iOS IPA 构建并上传 GitHub Release。历史构建和包结构检查已通过；尚未进行本轮新增功能的真实设备安装、启动、视觉、播放和站源验收，以下 0.2.15 数据为历史构建记录。
+0.2.160+2173 本轮只更新源码，尚未重新构建安装包；0.2.51+57 已由现有 GitHub Actions 完成红果鉴与真果鉴两版 Android 三种 ABI、Windows x64 ZIP 和未签名 iOS IPA 构建并上传 GitHub Release。历史构建和包结构检查已通过；尚未进行本轮新增功能的真实设备安装、启动、视觉、播放和站源验收，以下 0.2.15 数据为历史构建记录。本轮改动一在 Go 原生核心的红果取流与推荐，二在 Flutter 与 Android 的播放链路；需先在红果手机上验证播放成功率与签名是否被接口接受，再验证推荐 feed 与剧库导入，最后在电视 / 盒子与 Windows 上验证解码三档、兼容渲染模式、硬解色彩与着色器增强。
 
 0.2.15+21 已完成两版 Android ARM64 打包与安装包检查，签名与 0.2.10+16、0.2.14+20 一致，ARM64 分包版本码递增至 2021，可直接覆盖升级。此版本包含启动导航修复与首页多选、推荐、榜单的布局调整。Windows / iOS 完整应用仍待相应平台构建，本轮没有进行设备运行确认。
 
 | 平台 | 包与状态 |
 | --- | --- |
 | Android 8.0+ 手机 | `0.2.51+57` 两版 ARMv7 / ARM64 / x86_64 APK 已由 Actions 构建并发布，真实安装与运行仍待验收 |
-| Android 6.0+ 兼容版 | 当前源码 `0.2.158+2171` 的独立红果鉴 APK 待兼容工作流构建；在线播放保留，下载与本地媒体处理不提供，Android 6 实机验收待完成 |
+| Android 6.0+ 兼容版 | 当前源码 `0.2.160+2173` 的独立红果鉴 APK 待兼容工作流构建；在线播放保留，下载与本地媒体处理不提供，Android 6 实机验收待完成 |
 | Windows 10/11 x64 | `0.2.51+57` 两版完整 ZIP 已由 Actions 构建并发布；解压后分别运行 `hongguojian.exe` 或 `zhenguojian.exe`，保留所有 DLL 和 `data`；局域网原生发现依赖 Windows 10 1903+，包启动与设备互联仍待验证 |
 | Android TV | 与手机共用 Android 包；已补强自动识别与电视模式横屏，0.2.158 修复玻璃菜单焦点不可见、列表向上不跟随滚动、返回键直接退出应用三处遥控问题，待电视 / 盒子实机遥控验收 |
 | iOS 15.1+ | `0.2.51+57` 两版未签名 IPA 已由 Actions 构建并发布；0.2.40 起播放页禁用 media_kit_video 硬件纹理加速以规避 libmpv OpenGL ES 渲染上下文失败直接退出；仍待签名安装与真机验收 |
