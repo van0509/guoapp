@@ -1,8 +1,8 @@
 # 红果鉴 / 真果鉴
 
-Flutter 多端独立短剧应用，原名“短剧库 APP”。站源请求、解析、下载和播放均在设备上完成，不依赖旧项目或自建服务。当前源码版本：**0.2.160+2173（未验证开发快照）**。本轮移植上游 [Xanerix/guoapp](https://github.com/Xanerix/guoapp) 的五项播放改动：电视端新增三档解码方式与 `[Video]` 视频输出诊断，Windows 硬解固定 `d3d11va-copy` 修掉右侧或底部绿边，系统关闭动画时弹幕不再飞得过快，Windows 画质增强按上游移除 d3d11vpp 硬件档并修掉着色器按 CRLF 存放导致哈希校验失败、增强必然回落原画的问题，电视端新增兼容渲染模式开关。0.2.159 同步上游仓库 2026-10-21 的三个提交：红果播放器请求签名整段重写，X-Gorgon / X-Khronos 改由请求 query 与 body 的 MD5 前 4 字节加固定密钥重算，并补上 X-SS-STUB 与 X-SS-Req-Ticket，X-Argus 的设备号改取请求参数、X-Ladon 负载加入固定 build 号；新增设备注册请求与失败暂停、换号重注册的支撑代码；推荐新增 `home_feed` 与 `find_drama` 两个 bookmall tab 流、列表每页条数从 18 改为 54；剧库导入改为字段级合并，分集补上竖屏标记。上游同一轮回收了 0.2.157 并入的红果官网公开地址提取，官网回退现在只接受 `vid` / `series_id` 与请求一致且带 `video_player_info` 地址的响应。0.2.158 修复电视模式下的三处遥控问题：右上角“更多 / 站源”等玻璃菜单打开后没有可见选中项，焦点所在行没有任何边框或底色；设置等列表向下移动时页面跟随滚动、向上移动时页面不动；以及返回键在没有可返回层级时直接把应用退出。同时把电视模式下无法聚焦的分段按钮与筛选标签换成遥控可聚焦控件，并补齐下载页、追剧页头部到左侧导航的焦点出口。上一轮同步上游红果接口修复，并把上游的发布签名修正并入本项目已有的签名校验方案：红果 App 播放器请求在既有 X-Gorgon / X-Khronos 之外补齐 X-Argus / X-Ladon 签名，播放响应同时兼容 JSON 与 Base64 JSON 编码的 `video_model` 和直接返回的扁平 `video_list`；红果官网回退解析改读 `protectedPlayback`、video_id / series_id 的多种字段名，并从 JSON-LD `TVEpisode.contentUrl` 与页面链接中提取 `/video/public/{vid}/{quality}p.mp4` 地址，该网页地址提取已由本轮并入的上游提交回收，官网回退只保留目录页与严格匹配的 `video_player_info` 地址。0.2.156 修复电视模式输入框困住遥控焦点的问题：追剧与历史记录页的搜索框、以及其余电视可达的输入框此前都会吃掉方向键，焦点进得去出不来，输入框末尾的一键清除按钮也无法用遥控器选中；现在输入框自己接管方向键（右移选中一键清除、左移回到输入框、上下按出口回调或方向遍历离开）并在应用根部为所有页面与弹窗补上方向键兜底。0.2.155 的直播入口分级与激活码变更、0.2.152 的电视模式搜索、0.2.151 的确认键提交、0.2.150 的 Android 6 独立兼容版构建入口、红果鉴与真果鉴独立 Android 包名和发布签名继续保留；完整主版本的直播、推荐与搜索缓存、剧库导入导出、播放器生命周期与玻璃界面、网络出口切换、屏幕常亮、观看统计、断点续传与新增站源解析等功能继续保留。
+Flutter 多端独立短剧应用，原名“短剧库 APP”。站源请求、解析、下载和播放均在设备上完成，不依赖旧项目或自建服务。当前源码版本：**0.2.161+2174（未验证开发快照）**。本轮修复 0.2.160 推送后 GitHub Actions 报出的构建失败：画质增强删除 d3d11vpp 分支时少写一个右花括号，Dart 编译失败，Android 与 Windows 四个构建 job 在 1 分钟内全部退出；同一提交的四个文件也没有按 `dart format` 重排，checks 以 exit 65 失败。本轮补齐括号、按 Dart 3.13.3 重排格式，并清掉 `flutter analyze` 报出的 10 条 info：多余 import、异步回调里跨 await 使用 `BuildContext`、空 catch 块；本地 `dart format --set-exit-if-changed` 与 `flutter analyze` 均为 0 问题。0.2.160 移植上游 [Xanerix/guoapp](https://github.com/Xanerix/guoapp) 的五项播放改动：电视端新增三档解码方式与 `[Video]` 视频输出诊断，Windows 硬解固定 `d3d11va-copy` 修掉右侧或底部绿边，系统关闭动画时弹幕不再飞得过快，Windows 画质增强按上游移除 d3d11vpp 硬件档并修掉着色器按 CRLF 存放导致哈希校验失败、增强必然回落原画的问题，电视端新增兼容渲染模式开关。0.2.159 同步上游仓库 2026-10-21 的三个提交：红果播放器请求签名整段重写，X-Gorgon / X-Khronos 改由请求 query 与 body 的 MD5 前 4 字节加固定密钥重算，并补上 X-SS-STUB 与 X-SS-Req-Ticket，X-Argus 的设备号改取请求参数、X-Ladon 负载加入固定 build 号；新增设备注册请求与失败暂停、换号重注册的支撑代码；推荐新增 `home_feed` 与 `find_drama` 两个 bookmall tab 流、列表每页条数从 18 改为 54；剧库导入改为字段级合并，分集补上竖屏标记。上游同一轮回收了 0.2.157 并入的红果官网公开地址提取，官网回退现在只接受 `vid` / `series_id` 与请求一致且带 `video_player_info` 地址的响应。0.2.158 修复电视模式下的三处遥控问题：右上角“更多 / 站源”等玻璃菜单打开后没有可见选中项，焦点所在行没有任何边框或底色；设置等列表向下移动时页面跟随滚动、向上移动时页面不动；以及返回键在没有可返回层级时直接把应用退出。同时把电视模式下无法聚焦的分段按钮与筛选标签换成遥控可聚焦控件，并补齐下载页、追剧页头部到左侧导航的焦点出口。上一轮同步上游红果接口修复，并把上游的发布签名修正并入本项目已有的签名校验方案：红果 App 播放器请求在既有 X-Gorgon / X-Khronos 之外补齐 X-Argus / X-Ladon 签名，播放响应同时兼容 JSON 与 Base64 JSON 编码的 `video_model` 和直接返回的扁平 `video_list`；红果官网回退解析改读 `protectedPlayback`、video_id / series_id 的多种字段名，并从 JSON-LD `TVEpisode.contentUrl` 与页面链接中提取 `/video/public/{vid}/{quality}p.mp4` 地址，该网页地址提取已由本轮并入的上游提交回收，官网回退只保留目录页与严格匹配的 `video_player_info` 地址。0.2.156 修复电视模式输入框困住遥控焦点的问题：追剧与历史记录页的搜索框、以及其余电视可达的输入框此前都会吃掉方向键，焦点进得去出不来，输入框末尾的一键清除按钮也无法用遥控器选中；现在输入框自己接管方向键（右移选中一键清除、左移回到输入框、上下按出口回调或方向遍历离开）并在应用根部为所有页面与弹窗补上方向键兜底。0.2.155 的直播入口分级与激活码变更、0.2.152 的电视模式搜索、0.2.151 的确认键提交、0.2.150 的 Android 6 独立兼容版构建入口、红果鉴与真果鉴独立 Android 包名和发布签名继续保留；完整主版本的直播、推荐与搜索缓存、剧库导入导出、播放器生命周期与玻璃界面、网络出口切换、屏幕常亮、观看统计、断点续传与新增站源解析等功能继续保留。
 
-按用户 2026-09-21 的要求，继续暂停整体验证。0.2.51 的 GitHub Actions 构建、打包和 Release 记录保留；本次移植上游电视端解码方式、Windows 硬解与画质增强修正，checks、构建矩阵和 Release 上传流程保持原有规则。0.2.160+2173 等待 GitHub Actions 远程构建；本轮移植只完成源码，没有构建，也没有在电视、盒子与 Windows 上验证解码档位、兼容渲染模式、`d3d11va-copy` 与着色器增强。0.2.159+2172 的上游同步只完成源码与逐字比对，未联网验证红果取流、设备注册与推荐流。0.2.158+2171 的电视焦点与返回键修复同样只完成源码，未在 Android TV 与遥控器上验证。0.2.157+2170 的红果 App 播放取流签名、播放响应格式兼容与红果网页取流恢复同样只完成源码，未在红果手机、Android TV 与 Windows 上做连续选集播放验证。启动、榜单、画质增强、站源改名、画中画、连续播放控制栏、红果系列剧提醒、播放器 Tab 化、首页 / 播放页优化、多站源站源修复、十二个新增站源、直播、推荐、剧库传输、播放器生命周期、历史记录批量删除、设备互联和 Android 6 兼容版均保留未验证快照状态。
+按用户 2026-09-21 的要求，继续暂停整体验证。0.2.51 的 GitHub Actions 构建、打包和 Release 记录保留；本次移植上游电视端解码方式、Windows 硬解与画质增强修正，checks、构建矩阵和 Release 上传流程保持原有规则。0.2.161+2174 等待 GitHub Actions 远程构建；本轮只修编译与静态检查问题，本地跑通 `dart format` 与 `flutter analyze`，未在真机验证。0.2.160+2173 的移植只完成源码，没有构建，也没有在电视、盒子与 Windows 上验证解码档位、兼容渲染模式、`d3d11va-copy` 与着色器增强。0.2.159+2172 的上游同步只完成源码与逐字比对，未联网验证红果取流、设备注册与推荐流。0.2.158+2171 的电视焦点与返回键修复同样只完成源码，未在 Android TV 与遥控器上验证。0.2.157+2170 的红果 App 播放取流签名、播放响应格式兼容与红果网页取流恢复同样只完成源码，未在红果手机、Android TV 与 Windows 上做连续选集播放验证。启动、榜单、画质增强、站源改名、画中画、连续播放控制栏、红果系列剧提醒、播放器 Tab 化、首页 / 播放页优化、多站源站源修复、十二个新增站源、直播、推荐、剧库传输、播放器生命周期、历史记录批量删除、设备互联和 Android 6 兼容版均保留未验证快照状态。
 
 | 编译方式 | 应用名称 | 可用站源 |
 | --- | --- | --- |
@@ -58,6 +58,15 @@ Flutter 多端独立短剧应用，原名“短剧库 APP”。站源请求、�
 
 站源可用性、清晰度和区域限制取决于源站及网络；应用不解除源站 VIP 或其他授权限制。
 
+### 构建失败修复（0.2.161+2174）
+
+0.2.160+2173 推送后 `Build app packages` 的构建 job 全部失败。`checks` 停在 `dart format --output=none --set-exit-if-changed`，exit 65；`android (hongguojian)`、`android (zhenguojian, --all-sources)`、`windows (zhenguojian, --all-sources)`、`windows (hongguojian)` 停在 `build_android.py` / `build_windows.py`，1 分钟内退出；两个 iOS job 是 macOS runner 未分配到实例而取消，与源码无关。
+
+根因是同一处括号：`lib/video_enhancement.dart` 删除 d3d11vpp 分支时，`if (selected.backend != VideoEnhancementBackend.original) {` 少写一个右花括号，`try` 块内括号不平衡，整个文件靠尾部 `}  void _setOption(...) {` 多出的 `}` 配平。`dart format` 能解析这个文件，Dart 编译器却直接报错，于是 Android 与 Windows 的所有构建在同一处失败。本轮补齐两层括号、把 `}  void _setOption` 拆成两行，并用 Dart 3.13.3 对 `lib test integration_test test_driver` 重新排版，此前需要排版的四个文件（`lib/app_layout.dart`、`lib/player_screen.dart`、`lib/television_controls.dart`、`lib/video_enhancement.dart`）已与 `dart format` 输出一致。
+
+同时清掉 `flutter analyze` 的 10 条 info，让 checks 的静态检查能通过：删除 `lib/downloads_screen.dart` 多余的 `package:flutter/rendering.dart`；把「其他条件或 `!mounted`」的联合守卫拆成独立判断（`lib/downloads_screen.dart`、`lib/settings_screen.dart`）；跨 await 使用 `BuildContext` 的位置补 `context.mounted` 或 `mounted` 守卫（`lib/main.dart`、`lib/player_screen.dart`、`lib/storage_access.dart`）；`lib/player_screen.dart` 两个空 catch 块改为显式 `return;`。
+
+本轮不改播放行为。`test/downloads_test.dart` 与 `test/television_test.dart` 中的失败在 0.2.160 之前的 ec9a8ad 上同样存在（合成剧集没有远程海报，命中 `test/fixtures.dart` 的海报回退），本轮未处理；checks job 不运行 `flutter test`。待 GitHub Actions 远程构建。
 ### 上游电视端解码与 Windows 画质增强移植（0.2.160+2173）
 
 上游 [Xanerix/guoapp](https://github.com/Xanerix/guoapp) 在 2026-10-15 至 10-17 推送的五项播放改动已移植到本项目，改动全部在 Flutter 与 Android 层：
@@ -406,6 +415,8 @@ exports/
 
 0.2.55 补齐首页分类栏、站源侧栏、榜单、下载合集、设置、详情选集和批量操作之间的显式焦点出口；新增遥控列表、横向工具行、整行焦点条目和电视选项对话框。手机、电脑和 Windows 分支不改变原有布局。方向键串联、长按连续移动、返回后的焦点恢复仍待 Android TV 实机验证。
 
+0.2.161 修复 0.2.160 推送后的构建失败。`lib/video_enhancement.dart` 删除 d3d11vpp 分支时少写一个右花括号，括号不平衡使 Dart 编译失败，Android 与 Windows 的四个构建 job 在 1 分钟内退出；`checks` 另因四个文件未按 `dart format` 重排而以 exit 65 失败。本轮补齐括号、用 Dart 3.13.3 重排 `lib test integration_test test_driver`，并清掉 `flutter analyze` 的 10 条 info：删除 `lib/downloads_screen.dart` 多余的 `flutter/rendering.dart`，拆分 `!mounted` 联合守卫（`lib/downloads_screen.dart`、`lib/settings_screen.dart`），在 `lib/main.dart`、`lib/player_screen.dart`、`lib/storage_access.dart` 的跨 await `BuildContext` 使用处补 `context.mounted` 守卫，`lib/player_screen.dart` 两个空 catch 改为显式 `return;`。本地 `dart format --set-exit-if-changed` 与 `flutter analyze` 均为 0 问题。播放行为未改；`test/downloads_test.dart` 与 `test/television_test.dart` 的失败在 ec9a8ad 上同样存在，本轮未处理。待 Actions 远程构建。
+
 0.2.160 移植上游 Xanerix/guoapp 的电视端与 Windows 播放改动，本项目自身改动全部保留。电视端播放设置新增三档解码方式，硬解默认 / 硬解兼容 / 软解兼容，分别对应 mediacodec-copy、关掉 PBO 上传与跳过滤波的 mediacodec-copy、以及 hwdec=no；切换后从当前分集重新取流，并在播放设置里显示最近一次 `[Video]` 输出诊断（hwdec、vo、像素格式、硬件像素格式与分辨率），用来判断偏色或黑屏出在硬解输出格式还是纹理回退。Windows 显式设置 hwdec=d3d11va-copy，修掉部分显卡右侧或底部的绿边。弹幕动画控制器改为 AnimationBehavior.preserve，系统关闭动画时不再整片瞬移。画质增强按上游删除 d3d11vpp 硬件档与 duanju_vsr 滤镜链，属性读取改用 mpv_get_property_string，并修掉四个着色器按 CRLF 存放、manifest 哈希校验失败导致 Windows 增强必然原画的问题。电视端新增兼容渲染模式开关，开启后以 --enable-impeller=false 启动并重启进程生效。待电视、盒子与 Windows 实机验证。
 
 0.2.159 同步上游 2026-10-21 的三个提交，本项目自身改动全部保留。上游最终形态重写了红果播放器签名：`signHongguoPlayerRequest` 改为只接收请求、请求体与时间，X-Gorgon / X-Khronos 由 query 与 body 的 MD5 前 4 字节加固定密钥重算，补上 `X-SS-STUB` 与 `X-SS-Req-Ticket`，X-Argus 的设备号改取请求参数，X-Ladon 负载加入固定 build 号；评论接口与 bookmall tab 继续不签名。同时并入设备注册接口与失败暂停、换号重注册（生产链路暂无调用者，仅测试覆盖），推荐新增 `home_feed` 与 `find_drama` 两个 bookmall tab 流并把每页条数从 18 提到 54，剧库导入改为字段级合并 `mergeLibraryImportDrama`，分集补 `vertical` 竖屏标记，站源更新分类起始页从 1 改为 0。上游同一轮回收了 0.2.157 并入的官网公开地址提取，`resolveHongguoWebMedia` 现在要求页面 `vid` 与 `series_id` 都与请求一致，取不到 `video_player_info` 地址时报「红果该集未提供公开播放地址，可能需要登录或 App 授权」，目录页回退保留。上游 README 与 `pubspec.yaml` 的版本改动未套用。只完成源码与逐字比对，未构建、未联网验证。待红果手机、Android TV 与 Windows 连续选集验证。
@@ -719,14 +730,14 @@ SR-1、SR-2 与 SR-4 已接入源码，小型动漫 CNN 也包含在本轮；SR-
 
 ## 安装包与平台状态
 
-0.2.160+2173 本轮只更新源码，尚未重新构建安装包；0.2.51+57 已由现有 GitHub Actions 完成红果鉴与真果鉴两版 Android 三种 ABI、Windows x64 ZIP 和未签名 iOS IPA 构建并上传 GitHub Release。历史构建和包结构检查已通过；尚未进行本轮新增功能的真实设备安装、启动、视觉、播放和站源验收，以下 0.2.15 数据为历史构建记录。本轮改动一在 Go 原生核心的红果取流与推荐，二在 Flutter 与 Android 的播放链路；需先在红果手机上验证播放成功率与签名是否被接口接受，再验证推荐 feed 与剧库导入，最后在电视 / 盒子与 Windows 上验证解码三档、兼容渲染模式、硬解色彩与着色器增强。
+0.2.161+2174 本轮只更新源码，尚未重新构建安装包；0.2.51+57 已由现有 GitHub Actions 完成红果鉴与真果鉴两版 Android 三种 ABI、Windows x64 ZIP 和未签名 iOS IPA 构建并上传 GitHub Release。历史构建和包结构检查已通过；尚未进行本轮新增功能的真实设备安装、启动、视觉、播放和站源验收，以下 0.2.15 数据为历史构建记录。本轮改动一在 Go 原生核心的红果取流与推荐，二在 Flutter 与 Android 的播放链路；需先在红果手机上验证播放成功率与签名是否被接口接受，再验证推荐 feed 与剧库导入，最后在电视 / 盒子与 Windows 上验证解码三档、兼容渲染模式、硬解色彩与着色器增强。
 
 0.2.15+21 已完成两版 Android ARM64 打包与安装包检查，签名与 0.2.10+16、0.2.14+20 一致，ARM64 分包版本码递增至 2021，可直接覆盖升级。此版本包含启动导航修复与首页多选、推荐、榜单的布局调整。Windows / iOS 完整应用仍待相应平台构建，本轮没有进行设备运行确认。
 
 | 平台 | 包与状态 |
 | --- | --- |
 | Android 8.0+ 手机 | `0.2.51+57` 两版 ARMv7 / ARM64 / x86_64 APK 已由 Actions 构建并发布，真实安装与运行仍待验收 |
-| Android 6.0+ 兼容版 | 当前源码 `0.2.160+2173` 的独立红果鉴 APK 待兼容工作流构建；在线播放保留，下载与本地媒体处理不提供，Android 6 实机验收待完成 |
+| Android 6.0+ 兼容版 | 当前源码 `0.2.161+2174` 的独立红果鉴 APK 待兼容工作流构建；在线播放保留，下载与本地媒体处理不提供，Android 6 实机验收待完成 |
 | Windows 10/11 x64 | `0.2.51+57` 两版完整 ZIP 已由 Actions 构建并发布；解压后分别运行 `hongguojian.exe` 或 `zhenguojian.exe`，保留所有 DLL 和 `data`；局域网原生发现依赖 Windows 10 1903+，包启动与设备互联仍待验证 |
 | Android TV | 与手机共用 Android 包；已补强自动识别与电视模式横屏，0.2.158 修复玻璃菜单焦点不可见、列表向上不跟随滚动、返回键直接退出应用三处遥控问题，待电视 / 盒子实机遥控验收 |
 | iOS 15.1+ | `0.2.51+57` 两版未签名 IPA 已由 Actions 构建并发布；0.2.40 起播放页禁用 media_kit_video 硬件纹理加速以规避 libmpv OpenGL ES 渲染上下文失败直接退出；仍待签名安装与真机验收 |

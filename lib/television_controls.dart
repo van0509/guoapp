@@ -679,10 +679,7 @@ class TelevisionSettingsDialog extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            const Text(
-              '有声音没画面或颜色异常时可切换尝试',
-              style: TextStyle(fontSize: 14),
-            ),
+            const Text('有声音没画面或颜色异常时可切换尝试', style: TextStyle(fontSize: 14)),
             const SizedBox(height: 20),
             if (compatibleRendering != null) ...[
               RemoteButton(

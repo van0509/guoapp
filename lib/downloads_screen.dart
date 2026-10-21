@@ -5,7 +5,6 @@ import 'dart:math' as math;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import 'app_layout.dart';
@@ -644,13 +643,16 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     if (directory.isEmpty) {
       directory =
           await FilePicker.getDirectoryPath(dialogTitle: '选择导出位置') ?? '';
-      if (directory.isEmpty || !mounted) return;
+      if (directory.isEmpty) return;
+      if (!mounted) return;
       try {
         await widget.store.setExportDirectory(directory);
       } catch (_) {}
     }
     while (true) {
-      if (!await ensureStorageAccess(context) || !mounted) return;
+      if (!mounted) return;
+      if (!await ensureStorageAccess(context)) return;
+      if (!mounted) return;
       final confirmed = await showDialog<Object>(
         context: context,
         builder: (context) => AlertDialog(
@@ -677,15 +679,18 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
       if (confirmed == 'change') {
         directory =
             await FilePicker.getDirectoryPath(dialogTitle: '选择导出位置') ?? '';
-        if (directory.isEmpty || !mounted) return;
+        if (directory.isEmpty) return;
+        if (!mounted) return;
         try {
           await widget.store.setExportDirectory(directory);
         } catch (_) {}
         continue;
       }
-      if (confirmed != true || !mounted) return;
+      if (confirmed != true) return;
+      if (!mounted) return;
       break;
     }
+    if (!mounted) return;
     unawaited(
       showDialog<void>(
         context: context,

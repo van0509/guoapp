@@ -104,7 +104,9 @@ class AppDevice {
   static Future<bool> setCompatibleRendering(bool enabled) async {
     if (defaultTargetPlatform != TargetPlatform.android) return false;
     try {
-      await channel.invokeMethod('setCompatibleRendering', {'enabled': enabled});
+      await channel.invokeMethod('setCompatibleRendering', {
+        'enabled': enabled,
+      });
       return true;
     } catch (_) {
       return false;

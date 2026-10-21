@@ -896,7 +896,9 @@ class _StorageScreenState extends State<StorageScreen>
       return;
     }
     if (mounted) setState(() {});
-    if (!await hasAllFilesAccess()) await ensureStorageAccess(context);
+    if (await hasAllFilesAccess()) return;
+    if (!mounted) return;
+    await ensureStorageAccess(context);
   }
 
   @override

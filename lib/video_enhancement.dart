@@ -315,7 +315,7 @@ class VideoEnhancementController extends ChangeNotifier {
           final current = _shaderList();
           _ownedShaders.add(shaderPath);
           _mpv!.setStrings('glsl-shaders', [...current, shaderPath]);
-
+        }
       }
       _applied = selected;
       _confirmationMisses = 0;
@@ -328,7 +328,9 @@ class VideoEnhancementController extends ChangeNotifier {
     } finally {
       _applyingBackend = null;
     }
-  }  void _setOption(String key, String value) {
+  }
+
+  void _setOption(String key, String value) {
     final original = _mpv!.readString(key);
     if (original == null) throw VideoEnhancementFailure(key);
     _originalOptions.putIfAbsent(key, () => original);
@@ -439,8 +441,7 @@ class VideoEnhancementController extends ChangeNotifier {
         active == VideoEnhancementBackend.original ||
         _circuitOpen)
       return;
-    final graphics =
-        prefix.contains('vo/gpu') || prefix.contains('vo/libmpv');
+    final graphics = prefix.contains('vo/gpu') || prefix.contains('vo/libmpv');
     final failed =
         log.level == 'error' ||
         log.level == 'fatal' ||
@@ -570,7 +571,7 @@ class VideoEnhancementController extends ChangeNotifier {
         television: _television,
         gpu: _gpu,
         luma: _luma,
-          animation: animation,
+        animation: animation,
         power: _power,
         rate: player.state.rate,
         costLimit: _costLimit,

@@ -32,6 +32,7 @@ Future<void> requestStorageAccess() async {
 /// 返回引导结束时是否已授权（授权需用户在系统页操作，返回应用后需重新检测）。
 Future<bool> ensureStorageAccess(BuildContext context) async {
   if (await hasAllFilesAccess()) return true;
+  if (!context.mounted) return false;
   final open = await showGeneralDialog<bool>(
     context: context,
     barrierDismissible: true,

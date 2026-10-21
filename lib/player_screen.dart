@@ -582,7 +582,10 @@ class _PlayerScreenState extends State<PlayerScreen>
         'height': height,
       });
     } on PlatformException {
-    } on MissingPluginException {}
+      return;
+    } on MissingPluginException {
+      return;
+    }
   }
 
   void _setPictureInPictureStatus({
@@ -1287,8 +1290,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         final platform = _player.platform;
         if (platform is NativePlayer) {
           final televisionSurface = _television && Platform.isAndroid;
-          final optimized =
-              _televisionDecoder == TelevisionDecoder.optimized;
+          final optimized = _televisionDecoder == TelevisionDecoder.optimized;
           for (final option in {
             'cache-on-disk': 'no',
             'cache-secs': '20',
@@ -1706,7 +1708,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       final compatibleRendering = _television && Platform.isAndroid
           ? await AppDevice.compatibleRendering()
           : null;
-      if (!mounted || _closed) return;
+      if (!mounted || !context.mounted || _closed) return;
       selection = await showDialog<TelevisionPlaybackSetting>(
         context: context,
         builder: (menuContext) => AnimatedBuilder(
