@@ -76,6 +76,30 @@ class MainActivity : FlutterActivity() {
     private fun compatibleRendering(): Boolean =
         renderingPreferences().getBoolean("compatibleRendering", false)
 
+    @Suppress("DEPRECATION")
+    private fun setPreferredDisplayMode(lowResolution: Boolean): Boolean {
+        val targetMode = if (lowResolution) lowResolutionModeId() else 0
+        if (lowResolution && targetMode == 0) return false
+        return runCatching {
+            val attributes = window.attributes
+            attributes.preferredDisplayModeId = targetMode
+            window.attributes = attributes
+            true
+        }.getOrDefault(false)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun lowResolutionModeId(): Int {
+        val modes = runCatching { windowManager.defaultDisplay.supportedModes }.getOrNull()
+            ?: return 0
+        val widescreen = modes.filter { it.physicalWidth * 9 == it.physicalHeight * 16 }
+        widescreen.filter { it.physicalHeight == 1080 }.maxByOrNull { it.refreshRate }
+            ?.let { return it.modeId }
+        return widescreen.filter { it.physicalHeight < 1080 }
+            .maxWithOrNull(compareBy({ it.physicalHeight }, { it.refreshRate }))
+            ?.modeId ?: 0
+    }
+
     override fun getFlutterShellArgs(): FlutterShellArgs {
         val args = super.getFlutterShellArgs()
         if (compatibleRendering()) args.add("--enable-impeller=false")
@@ -252,6 +276,16 @@ class MainActivity : FlutterActivity() {
                             } else {
                                 result.success(null)
                                 restartApplication()
+                            }
+                        }
+                        "setPreferredDisplayMode" -> {
+                            val enabled = call.argument<Boolean>("enabled")
+                            if (enabled == null) {
+                                result.error("invalid_display_mode", "缺少显示模式状态", null)
+                            } else {
+                                result.success(
+                                    runCatching { setPreferredDisplayMode(enabled) }.getOrDefault(false)
+                                )
                             }
                         }
                         "vpnActive" -> result.success(runCatching { vpnActive() }.getOrDefault(false))

@@ -112,6 +112,18 @@ class AppDevice {
       return false;
     }
   }
+
+  static Future<bool> setPreferredDisplayMode(bool lowResolution) async {
+    if (defaultTargetPlatform != TargetPlatform.android) return false;
+    try {
+      return await channel.invokeMethod<bool>('setPreferredDisplayMode', {
+            'enabled': lowResolution,
+          }) ??
+          false;
+    } catch (_) {
+      return false;
+    }
+  }
 }
 
 class AppLayout extends InheritedWidget {

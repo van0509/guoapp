@@ -558,6 +558,9 @@ class TelevisionPlaybackSetting {
     this.enhancement,
     this.decoder,
     this.compatibleRendering,
+    this.colorCorrection,
+    this.chromaSwap,
+    this.lowResolution,
   });
   final double? speed;
   final int? quality;
@@ -567,6 +570,9 @@ class TelevisionPlaybackSetting {
   final VideoEnhancementPreferences? enhancement;
   final TelevisionDecoder? decoder;
   final bool? compatibleRendering;
+  final bool? colorCorrection;
+  final bool? chromaSwap;
+  final bool? lowResolution;
 }
 
 class TelevisionSettingsDialog extends StatelessWidget {
@@ -589,6 +595,9 @@ class TelevisionSettingsDialog extends StatelessWidget {
     this.decoder = TelevisionDecoder.optimized,
     this.videoOutput = '',
     this.compatibleRendering,
+    this.colorCorrection = false,
+    this.chromaSwap = false,
+    this.lowResolution = false,
   });
   final double speed;
   final int quality;
@@ -607,6 +616,9 @@ class TelevisionSettingsDialog extends StatelessWidget {
   final TelevisionDecoder decoder;
   final String videoOutput;
   final bool? compatibleRendering;
+  final bool colorCorrection;
+  final bool chromaSwap;
+  final bool lowResolution;
 
   @override
   Widget build(BuildContext context) => AlertDialog(
@@ -680,6 +692,49 @@ class TelevisionSettingsDialog extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text('有声音没画面或颜色异常时可切换尝试', style: TextStyle(fontSize: 14)),
+            const SizedBox(height: 20),
+            const Text('画面校正', style: TextStyle(fontSize: 18)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                RemoteButton(
+                  key: const ValueKey('tv-color-correction'),
+                  label: colorCorrection ? '颜色校正：开' : '颜色校正：关',
+                  selected: colorCorrection,
+                  onPressed: () => Navigator.pop(
+                    context,
+                    TelevisionPlaybackSetting(
+                      colorCorrection: !colorCorrection,
+                    ),
+                  ),
+                ),
+                RemoteButton(
+                  key: const ValueKey('tv-chroma-swap'),
+                  label: chromaSwap ? '红蓝互换：开' : '红蓝互换：关',
+                  selected: chromaSwap,
+                  onPressed: () => Navigator.pop(
+                    context,
+                    TelevisionPlaybackSetting(chromaSwap: !chromaSwap),
+                  ),
+                ),
+                RemoteButton(
+                  key: const ValueKey('tv-low-resolution'),
+                  label: lowResolution ? '1080P 输出：开' : '1080P 输出：关',
+                  selected: lowResolution,
+                  onPressed: () => Navigator.pop(
+                    context,
+                    TelevisionPlaybackSetting(lowResolution: !lowResolution),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '人脸发蓝或肤色发紫时打开红蓝互换；画面发灰变暗时打开颜色校正；4K 电视播放卡顿时打开 1080P 输出',
+              style: TextStyle(fontSize: 14),
+            ),
             const SizedBox(height: 20),
             if (compatibleRendering != null) ...[
               RemoteButton(

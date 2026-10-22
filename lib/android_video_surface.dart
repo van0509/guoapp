@@ -16,11 +16,13 @@ class VideoSurfaceHost extends StatefulWidget {
   const VideoSurfaceHost({
     super.key,
     required this.player,
+    this.maxRenderHeight = 0,
     this.onUnavailable,
     this.onReleased,
   });
 
   final Player player;
+  final int maxRenderHeight;
   final VoidCallback? onUnavailable;
   final VoidCallback? onReleased;
 
@@ -129,13 +131,26 @@ class _VideoSurfaceHostState extends State<VideoSurfaceHost> {
     } catch (_) {}
   }
 
+  (int, int) _renderSize() {
+    var width = _width;
+    var height = _height;
+    final limit = widget.maxRenderHeight;
+    if (limit > 0 && height > limit) {
+      width = (width * limit / height).round();
+      height = limit;
+    }
+    int even(int value) => value < 2 ? 2 : value - value % 2;
+    return (even(width), even(height));
+  }
+
   Future<void> _attachSurface() async {
     final wid = _wid;
     if (_disposed || _failed || wid == null) return;
     if (_width <= 0 || _height <= 0) return;
+    final (renderWidth, renderHeight) = _renderSize();
     try {
       await _setProperties(<String, String>{
-        'android-surface-size': '${_width}x$_height',
+        'android-surface-size': '${renderWidth}x$renderHeight',
         'wid': '$wid',
         'vo': 'gpu',
       });

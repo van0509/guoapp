@@ -28,6 +28,9 @@ class PlaybackPreferences {
     this.autoPictureInPicture = true,
     this.enhancement = const VideoEnhancementPreferences(),
     this.televisionDecoder = TelevisionDecoder.optimized,
+    this.televisionColorCorrection = false,
+    this.televisionChromaSwap = false,
+    this.televisionLowResolution = false,
   });
 
   final double speed;
@@ -40,6 +43,9 @@ class PlaybackPreferences {
   final bool autoPictureInPicture;
   final VideoEnhancementPreferences enhancement;
   final TelevisionDecoder televisionDecoder;
+  final bool televisionColorCorrection;
+  final bool televisionChromaSwap;
+  final bool televisionLowResolution;
 
   PlaybackPreferences copyWith({
     double? speed,
@@ -52,6 +58,9 @@ class PlaybackPreferences {
     bool? autoPictureInPicture,
     VideoEnhancementPreferences? enhancement,
     TelevisionDecoder? televisionDecoder,
+    bool? televisionColorCorrection,
+    bool? televisionChromaSwap,
+    bool? televisionLowResolution,
   }) => PlaybackPreferences(
     speed: speed ?? this.speed,
     quality: quality ?? this.quality,
@@ -63,6 +72,11 @@ class PlaybackPreferences {
     autoPictureInPicture: autoPictureInPicture ?? this.autoPictureInPicture,
     enhancement: enhancement ?? this.enhancement,
     televisionDecoder: televisionDecoder ?? this.televisionDecoder,
+    televisionColorCorrection:
+        televisionColorCorrection ?? this.televisionColorCorrection,
+    televisionChromaSwap: televisionChromaSwap ?? this.televisionChromaSwap,
+    televisionLowResolution:
+        televisionLowResolution ?? this.televisionLowResolution,
   );
 
   Map<String, dynamic> toJson() => {
@@ -76,6 +90,9 @@ class PlaybackPreferences {
     'autoPictureInPicture': autoPictureInPicture,
     'enhancement': enhancement.toJson(),
     'televisionDecoder': televisionDecoder.name,
+    'televisionColorCorrection': televisionColorCorrection,
+    'televisionChromaSwap': televisionChromaSwap,
+    'televisionLowResolution': televisionLowResolution,
   };
 
   factory PlaybackPreferences.fromJson(Map<String, dynamic> value) {
@@ -87,6 +104,12 @@ class PlaybackPreferences {
     final holdSpeed = (value['holdSpeed'] as num? ?? 2).toDouble();
     final swipeSeekSeconds = value['swipeSeekSeconds'] as int? ?? 60;
     final autoPictureInPicture = value['autoPictureInPicture'] as bool? ?? true;
+    final televisionColorCorrection =
+        value['televisionColorCorrection'] as bool? ?? false;
+    final televisionChromaSwap =
+        value['televisionChromaSwap'] as bool? ?? false;
+    final televisionLowResolution =
+        value['televisionLowResolution'] as bool? ?? false;
     final decoderName = value['televisionDecoder'];
     final televisionDecoder = TelevisionDecoder.values.firstWhere(
       (decoder) => decoder.name == decoderName,
@@ -110,6 +133,9 @@ class PlaybackPreferences {
       autoPictureInPicture: autoPictureInPicture,
       enhancement: VideoEnhancementPreferences.fromJson(value['enhancement']),
       televisionDecoder: televisionDecoder,
+      televisionColorCorrection: televisionColorCorrection,
+      televisionChromaSwap: televisionChromaSwap,
+      televisionLowResolution: televisionLowResolution,
     );
   }
 }

@@ -161,6 +161,10 @@ class _PlayerScreenState extends State<PlayerScreen>
   Animation<double>? _routeAnimation;
   double _speed = 1;
   TelevisionDecoder _televisionDecoder = TelevisionDecoder.optimized;
+  bool _televisionColorCorrection = false;
+  bool _televisionChromaSwap = false;
+  bool _televisionLowResolution = false;
+  bool? _displayModeApplied;
   String _videoOutput = '';
   double _aspectRatio = 9 / 16;
   double _resumePosition = 0;
@@ -187,6 +191,9 @@ class _PlayerScreenState extends State<PlayerScreen>
     preload: _preloadEnabled,
     enhancement: _enhancement.preferences,
     televisionDecoder: _televisionDecoder,
+    televisionColorCorrection: _televisionColorCorrection,
+    televisionChromaSwap: _televisionChromaSwap,
+    televisionLowResolution: _televisionLowResolution,
   );
   String get _qualityLabel => _plan?.local == true
       ? '本地原画'
@@ -229,6 +236,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
     return VideoSurfaceHost(
       player: _player,
+      maxRenderHeight: _television ? 1080 : 0,
       onUnavailable: _fallbackToTextureOutput,
       onReleased: _signalVideoSurfaceReleased,
     );
@@ -271,6 +279,9 @@ class _PlayerScreenState extends State<PlayerScreen>
     _danmakuEnabled = preferences.danmaku;
     _preloadEnabled = preferences.preload;
     _televisionDecoder = preferences.televisionDecoder;
+    _televisionColorCorrection = preferences.televisionColorCorrection;
+    _televisionChromaSwap = preferences.televisionChromaSwap;
+    _televisionLowResolution = preferences.televisionLowResolution;
     _loader = PlaybackLoader(widget.repository);
     _preloader = PlaybackPreloader(widget.repository);
     _danmaku = DanmakuController(widget.repository)
@@ -1298,23 +1309,46 @@ class _PlayerScreenState extends State<PlayerScreen>
             'framedrop': 'vo',
             'hr-seek-framedrop': 'yes',
             'hwdec-codecs': televisionSurface
-                ? 'all'
+                ? 'h264,hevc,mpeg2video'
                 : 'h264,hevc,mpeg4,mpeg2video,vp8,vp9,av1,avs3',
             if (Platform.isAndroid) 'ao': 'audiotrack,opensles',
             if (Platform.isWindows) 'hwdec': 'd3d11va-copy',
             if (televisionSurface) ...{
-              'hwdec': _televisionDecoder == TelevisionDecoder.software
-                  ? 'no'
-                  : 'mediacodec-copy',
-              'opengl-pbo': optimized ? 'yes' : 'no',
+              'hwdec': switch (_televisionDecoder) {
+                TelevisionDecoder.optimized => 'mediacodec',
+                TelevisionDecoder.hardware => 'mediacodec-copy',
+                TelevisionDecoder.software => 'no',
+              },
+              'gpu-api': 'opengl',
+              'opengl-es': 'yes',
+              'opengl-pbo': 'no',
               'video-latency-hacks': optimized ? 'yes' : 'no',
               'scale': 'bilinear',
               'cscale': 'bilinear',
               'dscale': 'bilinear',
               'correct-downscaling': 'no',
-              'vd-lavc-skiploopfilter': optimized ? 'all' : 'default',
-              'vd-lavc-skipidct': optimized ? 'all' : 'default',
-              'vd-lavc-threads': '2',
+              'linear-downscaling': 'no',
+              'sigmoid-upscaling': 'no',
+              'interpolation': 'no',
+              'deband': 'no',
+              'target-colorspace-hint': 'no',
+              'hdr-compute-peak': 'no',
+              'vd-lavc-skiploopfilter': 'all',
+              'vd-lavc-skipidct': 'all',
+              'vd-lavc-threads':
+                  _televisionDecoder == TelevisionDecoder.software ? '4' : '2',
+              if (_televisionDecoder == TelevisionDecoder.software)
+                'vd-lavc-fast': 'yes',
+              if (_televisionColorCorrection) ...{
+                'target-prim': 'bt.709',
+                'target-trc': 'bt.1886',
+                'video-output-levels': 'limited',
+              },
+              if (_televisionChromaSwap &&
+                  _televisionDecoder != TelevisionDecoder.optimized)
+                'vf': 'lavfi=[swapuv]'
+              else
+                'vf': '',
             },
           }.entries) {
             await platform.setProperty(option.key, option.value);
@@ -1365,6 +1399,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           _syncDanmaku();
           _acknowledgeHandoff();
           _menuRevision.value++;
+          unawaited(_applyDisplayMode());
         }
       });
     } catch (error) {
@@ -1486,6 +1521,12 @@ class _PlayerScreenState extends State<PlayerScreen>
     final qualityChanged = nextPreferences.quality != _requestedQuality;
     final decoderChanged =
         nextPreferences.televisionDecoder != _televisionDecoder;
+    final colorChanged =
+        nextPreferences.televisionColorCorrection !=
+            _televisionColorCorrection ||
+        nextPreferences.televisionChromaSwap != _televisionChromaSwap;
+    final displayModeChanged =
+        nextPreferences.televisionLowResolution != _televisionLowResolution;
     _enhancement.setPreferences(nextPreferences.enhancement);
     setState(() {
       _speed = nextPreferences.speed;
@@ -1494,17 +1535,32 @@ class _PlayerScreenState extends State<PlayerScreen>
       _danmakuEnabled = nextPreferences.danmaku;
       _preloadEnabled = nextPreferences.preload;
       _televisionDecoder = nextPreferences.televisionDecoder;
+      _televisionColorCorrection = nextPreferences.televisionColorCorrection;
+      _televisionChromaSwap = nextPreferences.televisionChromaSwap;
+      _televisionLowResolution = nextPreferences.televisionLowResolution;
     });
     _danmaku.setEnabled(_danmakuEnabled);
     _syncDanmaku();
     if (qualityChanged) _preloader.clear();
     _syncPreload();
     _menuRevision.value++;
+    if (displayModeChanged) unawaited(_applyDisplayMode());
     await _interactions.applySpeed();
     if (qualityChanged && _plan?.local != true) {
       await _retry(quality: nextPreferences.quality);
-    } else if (decoderChanged && _plan?.local != true) {
+    } else if ((decoderChanged || colorChanged) && _plan?.local != true) {
       await _retry();
+    }
+  }
+
+  Future<void> _applyDisplayMode() async {
+    if (!Platform.isAndroid) return;
+    final desired = _television && _televisionLowResolution;
+    if (_displayModeApplied == desired) return;
+    _displayModeApplied = desired;
+    final applied = await AppDevice.setPreferredDisplayMode(desired);
+    if (desired && !applied && mounted && !_closed) {
+      _notice('该电视未提供 1080P 显示模式，已保持当前分辨率');
     }
   }
 
@@ -1679,13 +1735,24 @@ class _PlayerScreenState extends State<PlayerScreen>
     final platform = _player.platform;
     var hwdec = '';
     var vo = '';
+    var color = '';
     if (platform is NativePlayer) {
       try {
         hwdec = await platform.getProperty('hwdec-current');
         vo = await platform.getProperty('current-vo');
+        final primaries = await platform.getProperty('video-params/primaries');
+        final gamma = await platform.getProperty('video-params/gamma');
+        final matrix = await platform.getProperty('video-params/colormatrix');
+        final levels = await platform.getProperty('video-params/colorlevels');
+        final displayFps = await platform.getProperty('display-fps');
+        final drops = await platform.getProperty('frame-drop-count');
+        color =
+            'primaries=$primaries gamma=$gamma matrix=$matrix levels=$levels '
+            'display-fps=$displayFps drops=$drops';
       } catch (_) {
         hwdec = '';
         vo = '';
+        color = '';
       }
     }
     if (_closed) return;
@@ -1693,7 +1760,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         '[Video] generation=$_generation television=$_television '
         'decoder=${_televisionDecoder.name} hwdec=$hwdec vo=$vo '
         'format=${parameters.pixelformat} hw_format=${parameters.hwPixelformat} '
-        'size=${parameters.w}x${parameters.h}';
+        'size=${parameters.w}x${parameters.h} $color';
     debugPrint(summary);
     if (mounted && !_closed && summary != _videoOutput) {
       setState(() => _videoOutput = summary);
@@ -1732,6 +1799,9 @@ class _PlayerScreenState extends State<PlayerScreen>
               decoder: _televisionDecoder,
               videoOutput: _videoOutput,
               compatibleRendering: compatibleRendering,
+              colorCorrection: _televisionColorCorrection,
+              chromaSwap: _televisionChromaSwap,
+              lowResolution: _televisionLowResolution,
               onCompareEnhancement: () {
                 unawaited(_enhancement.toggleCompare());
                 Navigator.pop(menuContext);
@@ -1759,6 +1829,9 @@ class _PlayerScreenState extends State<PlayerScreen>
           preload: true,
           enhancement: selection.enhancement,
           televisionDecoder: selection.decoder,
+          televisionColorCorrection: selection.colorCorrection,
+          televisionChromaSwap: selection.chromaSwap,
+          televisionLowResolution: selection.lowResolution,
         ),
       );
     } catch (_) {
@@ -1861,6 +1934,9 @@ class _PlayerScreenState extends State<PlayerScreen>
         await _player.dispose();
       }),
     );
+    if (_displayModeApplied == true) {
+      unawaited(AppDevice.setPreferredDisplayMode(false));
+    }
     if (Platform.isWindows) {
       unawaited(windowManager.setFullScreen(false));
     } else if (_mobile || _television && Platform.isAndroid) {
