@@ -22,7 +22,7 @@ func (downloader *Downloader) resolveHongguoAppMedia(ctx context.Context, videoI
 	}
 	result, err := downloader.hongguoAppRequest(ctx, http.MethodPost, "/novel/player/video_model/v1/", nil, payload)
 	if err != nil {
-		return providerMedia{}, err
+		return downloader.resolveHongguoPreloadMedia(ctx, videoID, err)
 	}
 	data := nestedMap(result, "data")
 	model, _ := data["video_model"].(map[string]any)
@@ -33,7 +33,7 @@ func (downloader *Downloader) resolveHongguoAppMedia(ctx context.Context, videoI
 		decoder := json.NewDecoder(strings.NewReader(encoded))
 		decoder.UseNumber()
 		if err := decoder.Decode(&model); err != nil {
-			return providerMedia{}, errors.New("红果 App 播放信息格式异常")
+			return downloader.resolveHongguoPreloadMedia(ctx, videoID, errors.New("红果 App 播放信息格式异常"))
 		}
 	}
 	if len(model) == 0 {
@@ -45,7 +45,42 @@ func (downloader *Downloader) resolveHongguoAppMedia(ctx context.Context, videoI
 			}
 		}
 	}
-	return selectHongguoAppMedia(model)
+	media, err := selectHongguoAppMedia(model)
+	if err != nil {
+		return downloader.resolveHongguoPreloadMedia(ctx, videoID, err)
+	}
+	return media, nil
+}
+
+func (downloader *Downloader) resolveHongguoPreloadMedia(ctx context.Context, videoID string, previous error) (providerMedia, error) {
+	payload := map[string]any{
+		"biz_param": map[string]any{
+			"detail_page_version": 0, "device_level": 3, "disable_digg_stat": false,
+			"need_all_video_definition": true, "need_mp4_align": false,
+			"use_os_player": false, "use_server_dns": false, "video_platform": 1024,
+		},
+		"dr_scene":           "preload",
+		"mixed_video_id_map": map[string]any{"1004": []string{videoID}},
+	}
+	result, err := downloader.hongguoAppRequest(ctx, http.MethodPost, "/novel/player/multi_video_model/preload/v1", nil, payload)
+	if err != nil {
+		return providerMedia{}, fmt.Errorf("单集取流：%v；批量取流：%w", previous, err)
+	}
+	entry, _ := nestedMap(result, "data")[videoID].(map[string]any)
+	model, _ := entry["video_model"].(map[string]any)
+	if encoded, ok := entry["video_model"].(string); ok {
+		if decoded, err := decodeHongguoBase64(encoded); err == nil && len(decoded) > 0 {
+			encoded = string(decoded)
+		}
+		decoder := json.NewDecoder(strings.NewReader(encoded))
+		decoder.UseNumber()
+		_ = decoder.Decode(&model)
+	}
+	media, err := selectHongguoAppMedia(model)
+	if err != nil {
+		return providerMedia{}, fmt.Errorf("单集取流：%v；批量取流：%w", previous, err)
+	}
+	return media, nil
 }
 
 func selectHongguoAppMedia(model map[string]any) (providerMedia, error) {
