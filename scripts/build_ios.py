@@ -87,17 +87,20 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     version = re.search(r'^version:\s*(\S+)', (root / 'pubspec.yaml').read_text(), re.MULTILINE).group(1)
     artifacts = []
+    ios_arguments = [*variant.flutter_arguments]
+    if variant.all_sources:
+        ios_arguments += ['--flavor', 'zhenguojian']
     if options.export_options:
         config = options.export_options.expanduser().resolve()
         if not config.is_file():
             raise SystemExit('ExportOptions.plist 不存在。')
-        run([flutter, 'build', 'ipa', '--release', '--no-pub', '--export-options-plist', str(config), *variant.flutter_arguments])
+        run([flutter, 'build', 'ipa', '--release', '--no-pub', '--export-options-plist', str(config), *ios_arguments])
         for package in (root / 'build' / 'ios' / 'ipa').glob('*.ipa'):
             destination = output / f'{variant.slug}-{version}-ios.ipa'
             shutil.copy2(package, destination)
             artifacts.append(destination)
     else:
-        run([flutter, 'build', 'ios', '--release', '--no-codesign', '--no-pub', *variant.flutter_arguments])
+        run([flutter, 'build', 'ios', '--release', '--no-codesign', '--no-pub', *ios_arguments])
         application = root / 'build' / 'ios' / 'iphoneos' / 'Runner.app'
         symbols = subprocess.check_output(['xcrun', 'nm', '-gU', str(application / 'Runner')], text=True)
         for symbol in ['_DuanjuRequest', '_DuanjuFree']:

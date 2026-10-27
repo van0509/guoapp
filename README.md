@@ -1,8 +1,8 @@
 # 红果鉴 / 真果鉴
 
-Flutter 多端独立短剧应用，原名“短剧库 APP”。站源请求、解析、下载和播放均在设备上完成，不依赖旧项目或自建服务。当前源码版本：**0.2.160+2173（未验证开发快照）**。本轮新增关于页手动检查更新与 Android 下载后交由系统安装；移除依赖附带的开机接收器和开机权限，并删除黄果 AI 媒体证书失败后跳过校验的回退。尚未设备验收。0.2.159 修正 issue #5 的历史卡片单条删除入口。0.2.158 移除 Android 广泛存储权限与启动授权提示，导出改用系统选择的文件夹；同步两个参考库的注册设备思路，优先采用匿名注册身份与直接片源模型，保留六签名兼容回退，并补充 TLS 协议协商重试。0.2.157 已完成 GitHub 多端打包，但用户仍反馈播放失败，本轮尚未进行本地构建或实机播放验证。0.2.156 在红果单集取流失败时增加批量预加载备用请求；0.2.154 补齐播放器签名与响应兼容，0.2.153 修正正式 APK 签名配置。完整主版本的直播、推荐与搜索缓存、剧库导入导出、播放器生命周期与玻璃界面、网络出口切换、屏幕常亮、观看统计、断点续传与新增站源解析等功能继续保留。
+Flutter 多端独立短剧应用，原名“短剧库 APP”。站源请求、解析、下载和播放均在设备上完成，不依赖旧项目或自建服务。当前源码版本：**0.2.161+2174（未验证开发快照）**。本轮为 iOS 新增独立的真果鉴构建配置与 Xcode scheme，使红果鉴和真果鉴使用不同应用标识，可在同一台 iPhone 上同时安装。0.2.160 新增关于页手动检查更新与 Android 下载后交由系统安装；移除依赖附带的开机接收器和开机权限，并删除黄果 AI 媒体证书失败后跳过校验的回退。以上变更尚未设备验收。0.2.159 修正 issue #5 的历史卡片单条删除入口。0.2.158 移除 Android 广泛存储权限与启动授权提示，导出改用系统选择的文件夹；同步两个参考库的注册设备思路，优先采用匿名注册身份与直接片源模型，保留六签名兼容回退，并补充 TLS 协议协商重试。0.2.157 已完成 GitHub 多端打包，但用户仍反馈播放失败，本轮尚未进行本地构建或实机播放验证。0.2.156 在红果单集取流失败时增加批量预加载备用请求；0.2.154 补齐播放器签名与响应兼容，0.2.153 修正正式 APK 签名配置。完整主版本的直播、推荐与搜索缓存、剧库导入导出、播放器生命周期与玻璃界面、网络出口切换、屏幕常亮、观看统计、断点续传与新增站源解析等功能继续保留。
 
-按用户 2026-09-21 的要求，继续暂停本地静态检查、构建、自动化测试与设备回归。0.2.160+2173 本轮仅完成源码修改、格式整理和收尾同步，另按用户要求诊断已发布 APK 的签名与权限。此前 0.2.158 已通过现有 [GitHub Actions 工作流](https://github.com/xiaoguan521/guoapp/actions/runs/40478599330)，并发布 [0.2.158 安装包](https://github.com/xiaoguan521/guoapp/releases/tag/v0.2.158)；自动检查和打包不代表播放、权限或本轮删除入口的设备验收通过。
+按用户 2026-09-21 的要求，继续暂停本地静态检查、构建、自动化测试与设备回归。0.2.161+2174 本轮补齐 iOS 双版本构建配置和脚本选择、格式整理及收尾同步，未执行新的构建或设备验证。此前 0.2.160+2173 仅完成源码修改、格式整理和收尾同步，另按用户要求诊断已发布 APK 的签名与权限。此前 0.2.158 已通过现有 [GitHub Actions 工作流](https://github.com/xiaoguan521/guoapp/actions/runs/40478599330)，并发布 [0.2.158 安装包](https://github.com/xiaoguan521/guoapp/releases/tag/v0.2.158)；自动检查和打包不代表播放、权限或本轮 iOS 双版本设备验收通过。
 
 | 编译方式 | 应用名称 | 可用站源 |
 | --- | --- | --- |
@@ -15,7 +15,7 @@ Flutter 多端独立短剧应用，原名“短剧库 APP”。站源请求、�
 
 这是编译选项，应用内不能切换版本。标题、Android 桌面名称与电视横幅、Windows 窗口与分发文件名、iOS 显示名随编译选项变化。界面、站源调用、原生下载调度同时限制可用站源；红果版不会访问或继续执行其他站源的旧任务。
 
-红果鉴 Android 包名为 `com.duanju.duanju_app`，真果鉴 Android 包名为 `com.duanju.duanju_app.zhenguojian`，两者使用不同的固定发布签名，可以在同一台手机上同时安装；Android 6 兼容版继续使用 `com.duanju.duanju_app.android6`。首次从旧的同包名真果鉴安装包切换到新包名时需要先卸载旧真果鉴，红果鉴现有包名保持不变。Windows 沿用原内部产品标识与数据目录，iOS 仍沿用原应用标识。切换版本保留追剧、观看记录、用户权限和下载记录；红果版隐藏其他站源内容，恢复全站源版后可继续使用。备份格式也保持兼容。
+红果鉴 Android 包名为 `com.duanju.duanju_app`，真果鉴 Android 包名为 `com.duanju.duanju_app.zhenguojian`，两者使用不同的固定发布签名，可以在同一台手机上同时安装；Android 6 兼容版继续使用 `com.duanju.duanju_app.android6`。iOS 红果鉴应用标识为 `com.duanju.duanjuApp`，真果鉴为 `com.duanju.duanjuApp.zhenguojian`，可在同一台 iPhone 上同时安装。首次从旧的同包名真果鉴安装包切换到新包名时需要先卸载旧真果鉴，红果鉴现有包名保持不变。Windows 沿用原内部产品标识与数据目录。两个应用标识拥有各自的本机数据目录；需要在版本间迁移记录时使用应用内备份与恢复。备份格式保持兼容。
 
 ### Android 6 兼容版
 
@@ -63,6 +63,23 @@ Flutter 多端独立短剧应用，原名“短剧库 APP”。站源请求、�
 Android 应用级图标原先固定指向通用播放图形。真果鉴的彩色果实图标只用于启动器别名，因此安装器展示应用信息时仍显示通用图形。现在全站源版将应用级 `icon` 与 `roundIcon` 都指向真果鉴图标，默认红果鉴仍使用现有图标。
 
 本轮只完成源码与 README 更新，没有构建或运行测试；修正后的安装界面和桌面图标仍待 Android 实机确认。
+
+### iOS 两个版本同时安装（0.2.161+2174）
+
+沿用已有的独立配置：`Runner` Scheme 使用 `com.duanju.duanjuApp`，`Zhenguojian` Scheme 使用 `com.duanju.duanjuApp.zhenguojian`。两者的显示名称、站源范围与原生核心仍须一致。新增配置覆盖 Debug / Profile / Release，并在 Podfile 中映射对应构建模式；本轮补齐 `build_ios.py --all-sources` 对真果鉴 Scheme 的选择，避免自动打包时仍使用红果鉴标识。
+
+在 macOS 项目目录为真果鉴准备原生核心与 Flutter 配置：
+
+~~~sh
+python3 scripts/build_ios.py --core-only --all-sources
+flutter build ios --config-only --no-codesign --flavor zhenguojian --dart-define=ALL_SOURCES=true
+pod install --project-directory=ios
+open ios/Runner.xcworkspace
+~~~
+
+Xcode 顶部选择 `Zhenguojian` 和自己的 iPhone，在 Runner 的 Signing & Capabilities 中为该配置选开发者 Team 并启用自动签名，再清理构建文件夹并运行。使用新的标识安装会保留原红果鉴；记录分别存储，需要迁移时使用应用内备份与恢复，不需卸载原应用。新标识须能由自己的 Apple 开发者账号签名。
+
+切回编译红果鉴时，先运行 `python3 scripts/build_ios.py --core-only`，再运行 `flutter build ios --config-only --no-codesign --dart-define=ALL_SOURCES=false`，并在 Xcode 选择 `Runner`。两个版本共用工作区内的原生核心产物，切换 Scheme 不会自动重编 Go 核心，不能省略这一步。直接运行完整 `python3 scripts/build_ios.py --all-sources` 则由脚本完成核心、依赖和真果鉴打包。源码配置已补齐，同机共存、签名和升级行为仍待实机验证。
 
 ### 手动更新与安全收敛（0.2.160+2173）
 
