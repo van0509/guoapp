@@ -3,7 +3,6 @@ import 'player_route.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -628,6 +627,14 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   }
 
   Future<void> _exportCollection(DownloadCollection collection) async {
+    try {
+      await _exportCollectionFiles(collection);
+    } catch (error) {
+      if (mounted) _message(error.toString());
+    }
+  }
+
+  Future<void> _exportCollectionFiles(DownloadCollection collection) async {
     final library = MediaLibrary.current;
     if (library == null) {
       _message('本地媒体尚未就绪，请稍候再试');
@@ -640,25 +647,21 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
       return;
     }
     var directory = widget.store.exportDirectory;
-    if (directory.isEmpty) {
-      directory =
-          await FilePicker.getDirectoryPath(dialogTitle: '选择导出位置') ?? '';
-      if (directory.isEmpty) return;
-      if (!mounted) return;
+    if (needsExportDirectorySelection(directory)) {
+      directory = await pickExportDirectory() ?? '';
+      if (directory.isEmpty || !mounted) return;
       try {
         await widget.store.setExportDirectory(directory);
       } catch (_) {}
     }
     while (true) {
       if (!mounted) return;
-      if (!await ensureStorageAccess(context)) return;
-      if (!mounted) return;
       final confirmed = await showDialog<Object>(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('导出到文件夹'),
           content: Text(
-            '将把《${collection.drama.title}》已下载的 ${jobs.length} 集复制到：\n\n$directory\n\n原始下载不受影响；目标已有同名文件时跳过。',
+            '将把《${collection.drama.title}》已下载的 ${jobs.length} 集复制到：\n\n${exportDirectoryLabel(directory)}\n\n原始下载不受影响；目标已有同名文件时跳过。',
           ),
           actions: [
             TextButton(
@@ -677,17 +680,14 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
         ),
       );
       if (confirmed == 'change') {
-        directory =
-            await FilePicker.getDirectoryPath(dialogTitle: '选择导出位置') ?? '';
-        if (directory.isEmpty) return;
-        if (!mounted) return;
+        directory = await pickExportDirectory() ?? '';
+        if (directory.isEmpty || !mounted) return;
         try {
           await widget.store.setExportDirectory(directory);
         } catch (_) {}
         continue;
       }
-      if (confirmed != true) return;
-      if (!mounted) return;
+      if (confirmed != true || !mounted) return;
       break;
     }
     if (!mounted) return;

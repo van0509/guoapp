@@ -38,21 +38,23 @@ type hongguoCatalogState struct {
 }
 
 type hongguoAppClient struct {
-	mu                  sync.Mutex
-	catalogMu           sync.Mutex
-	deviceMu            sync.Mutex
-	registerPausedUntil time.Time
-	baseURL             string
-	state               hongguoCatalogState
-	details             map[string]hongguoDetailEntry
-	pending             map[string]*hongguoDetailCall
-	searches            map[string]hongguoSearchEntry
-	searchPending       map[string]*hongguoSearchCall
-	searchSeasons       map[string]*hongguoSearchSeasonCursor
-	suggestions         map[string]hongguoSuggestionEntry
-	suggestPending      map[string]*hongguoSuggestionCall
-	danmaku             map[string]hongguoDanmakuCacheEntry
-	danmakuPending      map[string]*hongguoDanmakuCall
+	playbackDevice       *hongguoPlaybackDeviceCall
+	compatPlaybackDevice *hongguoPlaybackDeviceCall
+	mu                   sync.Mutex
+	catalogMu            sync.Mutex
+	deviceMu             sync.Mutex
+	registerPausedUntil  time.Time
+	baseURL              string
+	state                hongguoCatalogState
+	details              map[string]hongguoDetailEntry
+	pending              map[string]*hongguoDetailCall
+	searches             map[string]hongguoSearchEntry
+	searchPending        map[string]*hongguoSearchCall
+	searchSeasons        map[string]*hongguoSearchSeasonCursor
+	suggestions          map[string]hongguoSuggestionEntry
+	suggestPending       map[string]*hongguoSuggestionCall
+	danmaku              map[string]hongguoDanmakuCacheEntry
+	danmakuPending       map[string]*hongguoDanmakuCall
 }
 
 func (downloader *Downloader) hongguoClient() *hongguoAppClient {
@@ -63,7 +65,7 @@ func (downloader *Downloader) hongguoClient() *hongguoAppClient {
 			details: map[string]hongguoDetailEntry{}, pending: map[string]*hongguoDetailCall{},
 			searches: map[string]hongguoSearchEntry{}, searchPending: map[string]*hongguoSearchCall{},
 			searchSeasons: map[string]*hongguoSearchSeasonCursor{},
-			suggestions: map[string]hongguoSuggestionEntry{}, suggestPending: map[string]*hongguoSuggestionCall{},
+			suggestions:   map[string]hongguoSuggestionEntry{}, suggestPending: map[string]*hongguoSuggestionCall{},
 		}
 	})
 	return downloader.hongguo
@@ -149,6 +151,9 @@ func (downloader *Downloader) hongguoAppRequest(ctx context.Context, method, pat
 	client.mu.Lock()
 	base, deviceID, installID := client.baseURL, client.state.DeviceID, client.state.InstallID
 	client.mu.Unlock()
+	if identity, ok := ctx.Value(hongguoPlaybackIdentityKey{}).(hongguoPlaybackIdentity); ok {
+		deviceID, installID = identity.deviceID, identity.installID
+	}
 	query := hongguoAppQuery(deviceID, installID)
 	for key, values := range extra {
 		query[key] = append([]string(nil), values...)

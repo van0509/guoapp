@@ -9,7 +9,6 @@ import android.os.Bundle
 import android.os.BatteryManager
 import android.os.PowerManager
 import android.os.SystemClock
-import android.os.Environment
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -22,7 +21,6 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.Uri
-import android.provider.Settings
 import android.util.Rational
 import android.view.InputDevice
 import io.flutter.embedding.engine.FlutterEngine
@@ -146,32 +144,6 @@ class MainActivity : FlutterActivity() {
         return manager.bindProcessToNetwork(target)
     }
 
-    private fun hasAllFilesAccess(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            Environment.isExternalStorageManager()
-        } else {
-            checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) ==
-                PackageManager.PERMISSION_GRANTED
-        }
-    }
-
-    private fun requestStorageAccess() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val intent = runCatching {
-                Intent(
-                    Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
-                    Uri.parse("package:$packageName")
-                )
-            }.getOrElse { Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION) }
-            runCatching { startActivity(intent) }
-        } else {
-            requestPermissions(
-                arrayOf(android.Manifest.permission.WRITE_EXTERNAL_STORAGE),
-                4712
-            )
-        }
-    }
-
     private fun setLauncherEdition(full: Boolean): Boolean {
         val launcherPackage = MainActivity::class.java.name.substringBeforeLast('.')
         val green = ComponentName(this, "$launcherPackage.LauncherGreen")
@@ -241,13 +213,16 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         flutterEngine.plugins.add(VideoSurfacePlugin())
+        flutterEngine.plugins.add(StorageDocumentsPlugin())
+        flutterEngine.plugins.add(AppUpdatePlugin())
         deviceChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "duanju/device")
             .also { channel ->
                 channel.setMethodCallHandler { call, result ->
                     when (call.method) {
                         "deviceInfo" -> {
-                            val version = packageManager.getPackageInfo(packageName, 0).versionName
-                            result.success(mapOf("television" to isTelevisionDevice(), "version" to version))
+                            val info = AppUpdatePlugin.information(this).toMutableMap()
+                            info["television"] = isTelevisionDevice()
+                            result.success(info)
                         }
                         "setTelevisionMode" -> {
                             val enabled = call.argument<Boolean>("enabled")
@@ -289,11 +264,6 @@ class MainActivity : FlutterActivity() {
                             }
                         }
                         "vpnActive" -> result.success(runCatching { vpnActive() }.getOrDefault(false))
-                        "hasAllFilesAccess" -> result.success(hasAllFilesAccess())
-                        "requestStorageAccess" -> {
-                            requestStorageAccess()
-                            result.success(true)
-                        }
                         "setLauncherEdition" -> {
                             val full = call.argument<Boolean>("full") ?: false
                             result.success(runCatching { setLauncherEdition(full) }.getOrDefault(false))

@@ -14,6 +14,7 @@ import 'app_orientation.dart';
 import 'app_theme.dart';
 import 'error_boundary.dart';
 import 'home_screen.dart';
+import 'hongguo_licenses.dart';
 import 'launcher_icon.dart';
 import 'local_store.dart';
 import 'profiles_screen.dart';
@@ -25,7 +26,6 @@ import 'recommendation_service.dart';
 import 'remote_widgets.dart';
 import 'player_screen.dart';
 import 'search_cache.dart';
-import 'storage_access.dart';
 import 'video_enhancement_assets.dart';
 
 Future<void> main(List<String> arguments) async {
@@ -40,6 +40,7 @@ Future<void> main(List<String> arguments) async {
   }
   MediaKit.ensureInitialized();
   VideoEnhancementAssets.registerLicenses();
+  registerHongguoLicenses();
   if (Platform.isWindows && arguments.firstOrNull == '--package-smoke') {
     await runPackageSmoke(arguments);
     return;
@@ -185,7 +186,6 @@ class _AppBootstrapState extends State<AppBootstrap>
             );
           };
         });
-        if (Platform.isAndroid) unawaited(_promptStorageAccess(store!));
       }
     } catch (failure) {
       if (mounted) {
@@ -194,25 +194,6 @@ class _AppBootstrapState extends State<AppBootstrap>
         });
       }
     }
-  }
-
-  Future<void> _promptStorageAccess(LocalStore store) async {
-    if (store.locked || store.storagePromptShown) return;
-    final granted = await hasAllFilesAccess();
-    if (!mounted) return;
-    try {
-      await store.setStoragePromptShown(true);
-    } catch (_) {}
-    if (granted) return;
-    var context = navigator.currentState?.overlay?.context;
-    if (context == null) {
-      await WidgetsBinding.instance.endOfFrame;
-      if (!mounted) return;
-      context = navigator.currentState?.overlay?.context;
-      if (context == null) return;
-    }
-    if (!context.mounted) return;
-    await ensureStorageAccess(context);
   }
 
   @override

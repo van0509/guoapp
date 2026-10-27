@@ -43,6 +43,7 @@ android {
         minSdk = if (android6Compatibility) 23 else 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
+        manifestPlaceholders["appBuildNumber"] = flutter.versionCode.toString()
         versionName = flutter.versionName
         manifestPlaceholders["appLabel"] = appLabel
         manifestPlaceholders["appLabelFull"] = appLabel

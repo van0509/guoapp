@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import 'app_layout.dart';
+import 'app_update.dart';
 import 'app_bottom_navigation.dart';
 import 'app_notice.dart';
 import 'glass_panel.dart';
@@ -482,7 +483,8 @@ class _HomeScreenState extends State<HomeScreen> {
     } else if (action == 'about') {
       showDialog<void>(
         context: context,
-        builder: (_) => _AboutDialog(store: widget.store),
+        builder: (_) =>
+            _AboutDialog(store: widget.store, repository: widget.repository),
       );
     }
   }
@@ -1979,8 +1981,9 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _AboutDialog extends StatefulWidget {
-  const _AboutDialog({required this.store});
+  const _AboutDialog({required this.store, required this.repository});
   final LocalStore store;
+  final AppRepository repository;
   @override
   State<_AboutDialog> createState() => _AboutDialogState();
 }
@@ -2099,12 +2102,39 @@ class _AboutDialogState extends State<_AboutDialog> {
                 ],
               ],
               const SizedBox(height: 12),
-              Align(
-                alignment: AlignmentDirectional.centerEnd,
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('关闭'),
-                ),
+              OutlinedButton.icon(
+                onPressed: () {
+                  final navigator = Navigator.of(context);
+                  navigator.pop();
+                  navigator.push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => AppUpdateScreen(
+                        store: widget.store,
+                        repository: widget.repository,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.system_update_rounded),
+                label: const Text('检查更新'),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: () => showLicensePage(
+                      context: context,
+                      applicationName: appEditionName(widget.store.fullMode),
+                      applicationVersion: AppLayout.versionOf(context),
+                    ),
+                    child: const Text('开源许可'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('关闭'),
+                  ),
+                ],
               ),
             ],
           ),

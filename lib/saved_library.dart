@@ -127,7 +127,7 @@ class _SavedLibraryState extends State<SavedLibrary> {
     drama: drama,
     store: widget.store,
     anchor: anchor,
-    history: widget.history,
+    history: _history,
     onContinue: () => widget.onContinue(drama),
     onDownload: widget.onDownload == null
         ? null

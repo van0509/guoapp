@@ -11,6 +11,7 @@ import 'core_bridge.dart';
 import 'local_store.dart';
 import 'media_pipeline.dart';
 import 'models.dart';
+import 'storage_access.dart';
 
 part 'media_merge_queue.dart';
 part 'media_merge.dart';

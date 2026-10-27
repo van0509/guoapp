@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 )
@@ -30,7 +31,14 @@ func newCDNTransport(base *http.Transport, resolver *dnsResolver) *cdnTransport 
 
 func (transport *cdnTransport) RoundTrip(request *http.Request) (*http.Response, error) {
 	if request.URL.Scheme != "https" || (!protectedCDNHost(request.URL.Hostname()) && request.Context().Value(nativeCoverNetworkKey{}) != true) || (request.Method != http.MethodGet && request.Method != http.MethodHead) {
-		return transport.base.RoundTrip(request)
+		response, err := transport.base.RoundTrip(request)
+		if err != nil && request.URL.Scheme == "https" && hongguoALPNHost(request.URL.Hostname()) && strings.Contains(strings.ToLower(err.Error()), "no application protocol") {
+			if response != nil && response.Body != nil {
+				response.Body.Close()
+			}
+			return retryHongguoALPN(transport.base, request, err)
+		}
+		return response, err
 	}
 	var proxyURL *url.URL
 	var err error
