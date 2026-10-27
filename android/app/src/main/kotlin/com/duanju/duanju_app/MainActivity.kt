@@ -172,13 +172,15 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         flutterEngine.plugins.add(VideoSurfacePlugin())
         flutterEngine.plugins.add(StorageDocumentsPlugin())
+        flutterEngine.plugins.add(AppUpdatePlugin())
         deviceChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "duanju/device")
             .also { channel ->
                 channel.setMethodCallHandler { call, result ->
                     when (call.method) {
                         "deviceInfo" -> {
-                            val version = packageManager.getPackageInfo(packageName, 0).versionName
-                            result.success(mapOf("television" to isTelevisionDevice(), "version" to version))
+                            val info = AppUpdatePlugin.information(this).toMutableMap()
+                            info["television"] = isTelevisionDevice()
+                            result.success(info)
                         }
                         "setTelevisionMode" -> {
                             val enabled = call.argument<Boolean>("enabled")

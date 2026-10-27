@@ -1272,6 +1272,8 @@ class LocalStore extends ChangeNotifier {
     _notify();
   });
 
+  Future<void> flushPendingWrites() => _writes;
+
   Future<void> _queue(Future<void> Function() action) {
     _writes = _writes.catchError((Object _) {}).then((_) => action());
     return _writes;

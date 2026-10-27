@@ -1,6 +1,8 @@
 #include "flutter_window.h"
 
 #include <optional>
+#include <string>
+#include <cstdint>
 #include <flutter/standard_method_codec.h>
 
 #include "flutter/generated_plugin_registrant.h"
@@ -33,6 +35,17 @@ bool FlutterWindow::OnCreate() {
   device_channel_->SetMethodCallHandler(
       [](const flutter::MethodCall<flutter::EncodableValue>& call,
          std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+        if (call.method_name() == "deviceInfo") {
+          flutter::EncodableMap values;
+          values[flutter::EncodableValue("television")] = flutter::EncodableValue(false);
+          values[flutter::EncodableValue("version")] = flutter::EncodableValue(
+              std::to_string(FLUTTER_VERSION_MAJOR) + "." +
+              std::to_string(FLUTTER_VERSION_MINOR) + "." +
+              std::to_string(FLUTTER_VERSION_PATCH));
+          values[flutter::EncodableValue("build")] = flutter::EncodableValue(static_cast<int64_t>(FLUTTER_VERSION_BUILD));
+          result->Success(flutter::EncodableValue(values));
+          return;
+        }
         if (call.method_name() != "playbackPower") {
           result->NotImplemented();
           return;

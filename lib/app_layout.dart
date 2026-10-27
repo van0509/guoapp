@@ -8,7 +8,7 @@ import 'app_theme.dart';
 
 export 'app_build.dart';
 
-const appVersion = '0.2.149';
+const appVersion = '0.2.160';
 
 ThemeData? _televisionThemeLight;
 ThemeData? _televisionThemeDark;
@@ -67,8 +67,13 @@ class AppDevice {
   static Future<AppDevice> detect({
     AppDevice fallback = const AppDevice(),
   }) async {
-    if (defaultTargetPlatform != TargetPlatform.android) {
-      return const AppDevice();
+    if (kIsWeb ||
+        !const [
+          TargetPlatform.android,
+          TargetPlatform.windows,
+          TargetPlatform.iOS,
+        ].contains(defaultTargetPlatform)) {
+      return fallback;
     }
     try {
       final data = await channel

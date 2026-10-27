@@ -3,8 +3,6 @@ package core
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -174,16 +172,6 @@ func (d *Downloader) doMediaRequestWithClient(request *http.Request, client *htt
 		}
 		response, err := client.Do(request)
 		if err != nil {
-			if response, fallbackErr := d.doHuangguoAIMediaTLSFallback(request, client, err); fallbackErr == nil {
-				d.recordDiagnostic(diagnosticEvent{
-					Event:   "media.tls_fallback",
-					Level:   "warning",
-					Source:  sourceHuangguoAI,
-					Host:    request.URL.Hostname(),
-					Message: "黄果 AI 媒体地址证书校验失败，已使用当前媒体会话兼容连接",
-				})
-				return response, nil
-			}
 			return nil, err
 		}
 		if keyRequest && attempt == 0 && (response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden) {
@@ -207,80 +195,6 @@ func (d *Downloader) doMediaRequestWithClient(request *http.Request, client *htt
 		return response, nil
 	}
 	return nil, errors.New("播放凭证刷新失败")
-}
-
-func (d *Downloader) doHuangguoAIMediaTLSFallback(request *http.Request, client *http.Client, original error) (*http.Response, error) {
-	if providerSourceForURL(request.Header.Get("Referer")) != sourceHuangguoAI || !isCertificateValidationError(original) {
-		return nil, original
-	}
-	insecureClient, ok := insecureTLSClient(client)
-	if !ok {
-		return nil, original
-	}
-	return insecureClient.Do(request)
-}
-
-func isCertificateValidationError(err error) bool {
-	var hostnameErr x509.HostnameError
-	var authorityErr x509.UnknownAuthorityError
-	var invalidErr x509.CertificateInvalidError
-	return errors.As(err, &hostnameErr) || errors.As(err, &authorityErr) || errors.As(err, &invalidErr)
-}
-
-func insecureTLSClient(client *http.Client) (*http.Client, bool) {
-	if client == nil {
-		return nil, false
-	}
-	transport, ok := insecureTLSRoundTripper(client.Transport)
-	if !ok {
-		return nil, false
-	}
-	clone := *client
-	clone.Transport = transport
-	return &clone, true
-}
-
-func insecureTLSRoundTripper(roundTripper http.RoundTripper) (http.RoundTripper, bool) {
-	switch transport := roundTripper.(type) {
-	case nil:
-		base := http.DefaultTransport.(*http.Transport).Clone()
-		base.TLSClientConfig = insecureTLSConfig(base.TLSClientConfig)
-		return base, true
-	case *huangguoBrowserTransport:
-		base, ok := insecureTLSRoundTripper(transport.base)
-		if !ok {
-			return nil, false
-		}
-		clone := *transport
-		clone.base = base
-		clone.insecure = true
-		clone.mu = sync.Mutex{}
-		clone.clients = make(map[string]browserHTTPClient)
-		clone.newClient = clone.createClient
-		return &clone, true
-	case *cdnTransport:
-		base, ok := insecureTLSRoundTripper(transport.base)
-		if !ok {
-			return nil, false
-		}
-		return newCDNTransport(base.(*http.Transport), transport.resolver), true
-	case *http.Transport:
-		clone := transport.Clone()
-		clone.TLSClientConfig = insecureTLSConfig(clone.TLSClientConfig)
-		return clone, true
-	default:
-		return nil, false
-	}
-}
-
-func insecureTLSConfig(config *tls.Config) *tls.Config {
-	if config == nil {
-		config = &tls.Config{}
-	} else {
-		config = config.Clone()
-	}
-	config.InsecureSkipVerify = true
-	return config
 }
 
 func (d *Downloader) fetchMediaPlaylist(ctx context.Context, address, referer string) (string, string, error) {
