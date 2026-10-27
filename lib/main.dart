@@ -25,7 +25,6 @@ import 'player_route.dart';
 import 'recommendation_service.dart';
 import 'player_screen.dart';
 import 'search_cache.dart';
-import 'storage_access.dart';
 import 'video_enhancement_assets.dart';
 
 Future<void> main(List<String> arguments) async {
@@ -182,7 +181,6 @@ class _AppBootstrapState extends State<AppBootstrap>
             );
           };
         });
-        if (Platform.isAndroid) unawaited(_promptStorageAccess(store!));
       }
     } catch (failure) {
       if (mounted) {
@@ -191,24 +189,6 @@ class _AppBootstrapState extends State<AppBootstrap>
         });
       }
     }
-  }
-
-  Future<void> _promptStorageAccess(LocalStore store) async {
-    if (store.locked || store.storagePromptShown) return;
-    final granted = await hasAllFilesAccess();
-    if (!mounted) return;
-    try {
-      await store.setStoragePromptShown(true);
-    } catch (_) {}
-    if (granted) return;
-    var context = navigator.currentState?.overlay?.context;
-    if (context == null) {
-      await WidgetsBinding.instance.endOfFrame;
-      if (!mounted) return;
-      context = navigator.currentState?.overlay?.context;
-      if (context == null) return;
-    }
-    await ensureStorageAccess(context);
   }
 
   @override

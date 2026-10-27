@@ -4,7 +4,6 @@ package core
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,16 +20,20 @@ const (
 	hongguoSignedMediaUA  = "com.phoenix.read/71332 (Linux; U; Android 16; zh_CN; 25053RT47C; Build/BP2A.250605.031.A3; Cronet/TTNetVersion:04657795 2026-01-23 QuicVersion:c67e9834 2025-09-08)"
 )
 
-func hongguoPlaybackDeviceID() (string, error) {
-	var raw [6]byte
-	if _, err := rand.Read(raw[:]); err != nil {
-		return "", errors.New("红果播放设备参数生成失败")
+var errHongguoPlaybackEmpty = errors.New("红果播放接口空响应，可能与设备鉴权或签名有关")
+
+func (downloader *Downloader) resolveHongguoRegisteredMedia(ctx context.Context, videoID string) (providerMedia, error) {
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	identity, err := downloader.hongguoPlaybackDevice(ctx)
+	if err != nil {
+		return providerMedia{}, err
 	}
-	var value uint64
-	for _, part := range raw {
-		value = value<<8 | uint64(part)
+	media, err := downloader.requestHongguoAppMedia(ctx, videoID, identity, false)
+	if errors.Is(err, errHongguoPlaybackEmpty) && ctx.Err() == nil {
+		return downloader.requestHongguoAppMedia(ctx, videoID, identity, true)
 	}
-	return strconv.FormatUint(1_000_000_000_000_000+value, 10), nil
+	return media, err
 }
 
 func hongguoSignedMediaQuery(deviceID, installID string, timestamp, ticket int64) string {
@@ -52,9 +55,7 @@ func hongguoSignedMediaQuery(deviceID, installID string, timestamp, ticket int64
 	return strings.Join(parts, "&")
 }
 
-func (downloader *Downloader) resolveHongguoSignedMedia(ctx context.Context, videoID string) (providerMedia, error) {
-	ctx, cancel := context.WithTimeout(ctx, 16*time.Second)
-	defer cancel()
+func (downloader *Downloader) requestHongguoAppMedia(ctx context.Context, videoID string, identity hongguoPlaybackIdentity, signed bool) (providerMedia, error) {
 	body, err := json.Marshal(map[string]any{
 		"biz_param": map[string]any{
 			"detail_page_version": 0, "device_level": 3, "disable_digg_stat": false,
@@ -66,32 +67,40 @@ func (downloader *Downloader) resolveHongguoSignedMedia(ctx context.Context, vid
 	if err != nil {
 		return providerMedia{}, err
 	}
-	deviceID, err := hongguoPlaybackDeviceID()
-	if err != nil {
-		return providerMedia{}, err
-	}
-	installID, err := hongguoPlaybackDeviceID()
-	if err != nil {
-		return providerMedia{}, err
-	}
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, hongguoSignedMediaURL, bytes.NewReader(body))
 	if err != nil {
 		return providerMedia{}, err
 	}
-	request.Header.Set("User-Agent", hongguoSignedMediaUA)
+	agent := hongguoRegisteredMediaUA
+	if signed {
+		agent = hongguoSignedMediaUA
+	}
+	request.Header.Set("User-Agent", agent)
 	request.Header.Set("Accept", "application/json; charset=utf-8,application/x-protobuf")
 	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	request.Header.Set("X-XS-From-Web", "0")
-	request.Header.Set("X-Tt-Request-Tag", "t=0;n=0")
-	request.Header.Set("Sdk-Version", "2")
-	request.Header.Set("Passport-Sdk-Version", "50561")
-	request.Header.Set("X-Vc-Bdturing-Sdk-Version", "3.7.2.cn")
-	request.Header.Set("X-Tt-Dt", "")
+	if signed {
+		request.Header.Set("X-XS-From-Web", "0")
+		request.Header.Set("X-Tt-Request-Tag", "t=0;n=0")
+		request.Header.Set("Sdk-Version", "2")
+		request.Header.Set("Passport-Sdk-Version", "50561")
+		request.Header.Set("X-Vc-Bdturing-Sdk-Version", "3.7.2.cn")
+		request.Header.Set("X-Tt-Dt", "")
+	}
 	result, err := downloader.hongguoPlaybackJSON(request, func(prepared *http.Request) error {
 		now := time.Now()
+		if !signed {
+			query, err := url.ParseQuery(hongguoSignedMediaQuery(identity.deviceID, identity.installID, now.Unix(), now.UnixMilli()))
+			if err != nil {
+				return err
+			}
+			query.Del("ts")
+			query.Set("cdid", identity.cdid)
+			prepared.URL.RawQuery = query.Encode()
+			return nil
+		}
 		for offset := int64(0); offset < 32; offset++ {
 			ticket := now.UnixMilli() + offset
-			query := hongguoSignedMediaQuery(deviceID, installID, now.Unix(), ticket)
+			query := hongguoSignedMediaQuery(identity.deviceID, identity.installID, now.Unix(), ticket) + "&cdid=" + url.QueryEscape(identity.cdid)
 			if hgBranchOf(query, body, uint32(now.Unix())) == 1 {
 				continue
 			}
@@ -116,8 +125,8 @@ func (downloader *Downloader) resolveHongguoSignedMedia(ctx context.Context, vid
 	if err != nil {
 		return providerMedia{}, err
 	}
-	if _, ok := model["fallback_api"]; !ok {
-		return hongguoSignedDirectMedia(model)
+	if len(hongguoFallbackRows(model["video_list"])) > 0 {
+		return hongguoInlineMedia(model, agent)
 	}
 	fallback, err := hongguoFallbackAPI(model)
 	if err != nil {
@@ -130,25 +139,34 @@ func (downloader *Downloader) resolveHongguoSignedMedia(ctx context.Context, vid
 	return hongguoMediaFromFallbackData(model, data)
 }
 
-func hongguoSignedDirectMedia(model map[string]any) (providerMedia, error) {
-	media, err := selectHongguoAppMedia(model)
+func hongguoInlineMedia(model map[string]any, agent string) (providerMedia, error) {
+	var rows []any
+	for _, item := range hongguoFallbackRows(model["video_list"]) {
+		encryption := nestedMap(item, "encrypt_info")
+		spade := firstNonEmpty(mapString(item, "spade_a"), mapString(encryption, "spade_a"))
+		flag := mapString(encryption, "encrypt")
+		if spade == "" && flag != "false" && flag != "0" {
+			continue
+		}
+		rows = append(rows, item)
+	}
+	if len(rows) == 0 {
+		return providerMedia{}, errors.New("本集片源缺少有效解密信息")
+	}
+	inline := make(map[string]any, len(model))
+	for key, value := range model {
+		inline[key] = value
+	}
+	inline["video_list"] = rows
+	media, err := hongguoMediaFromFallbackData(inline, inline)
 	if err != nil {
 		return providerMedia{}, err
 	}
-	var variants []providerMedia
-	for _, variant := range media.Variants {
-		if hongguoAllowedMediaURL(variant.URL) {
-			variant.Referer = ""
-			variant.credentials = &providerMediaCredentials{userAgent: hongguoSignedMediaUA}
-			variants = append(variants, variant)
-		}
+	media.credentials = &providerMediaCredentials{userAgent: agent}
+	for index := range media.Variants {
+		media.Variants[index].credentials = &providerMediaCredentials{userAgent: agent}
 	}
-	if len(variants) == 0 {
-		return providerMedia{}, errors.New("红果批量接口未返回允许的媒体地址")
-	}
-	selected := variants[0]
-	selected.Variants = variants
-	return selected, nil
+	return media, nil
 }
 
 func (downloader *Downloader) hongguoPlaybackJSON(request *http.Request, prepare func(*http.Request) error) (map[string]any, error) {
@@ -195,8 +213,11 @@ func (downloader *Downloader) hongguoPlaybackJSON(request *http.Request, prepare
 	if response.StatusCode != http.StatusOK {
 		return nil, downloader.catalogResponseError(request, response, content)
 	}
-	if len(bytes.TrimSpace(content)) == 0 || len(content) > providerMaxBodyBytes {
-		return nil, errors.New("红果播放接口未返回有效数据")
+	if len(bytes.TrimSpace(content)) == 0 {
+		return nil, errHongguoPlaybackEmpty
+	}
+	if len(content) > providerMaxBodyBytes {
+		return nil, errors.New("红果播放接口响应过大")
 	}
 	var result map[string]any
 	decoder := json.NewDecoder(bytes.NewReader(content))
@@ -211,9 +232,10 @@ func (downloader *Downloader) hongguoPlaybackJSON(request *http.Request, prepare
 }
 
 func hongguoPlaybackResponseError(result map[string]any) error {
-	code := firstNonEmpty(mapString(result, "code", "Code", "status_code"), mapString(nestedMap(result, "BaseResp"), "StatusCode"))
-	if code != "" && code != "0" {
-		return fmt.Errorf("红果播放接口暂不可用（%s）", truncate(code, 20))
+	for _, code := range []string{mapString(result, "code"), mapString(result, "Code"), mapString(result, "status_code"), mapString(nestedMap(result, "BaseResp"), "StatusCode")} {
+		if code != "" && code != "0" {
+			return fmt.Errorf("红果播放接口暂不可用（%s）", truncate(code, 20))
+		}
 	}
 	return nil
 }

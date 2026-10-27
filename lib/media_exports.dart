@@ -176,10 +176,15 @@ extension MediaFolderExportOperations on MediaLibrary {
     final jobs = selected.where((job) => job.completed).toList()
       ..sort((a, b) => a.episode.number.compareTo(b.episode.number));
     if (jobs.isEmpty) throw AppFailure('没有已下载的分集');
-    final show = Directory(
-      path.join(destination, _safeName(jobs.first.drama.title)),
-    );
-    await show.create(recursive: true);
+    final documentDirectory = isDocumentExportDirectory(destination);
+    if (Platform.isAndroid && !documentDirectory) {
+      throw AppFailure('请通过系统文件夹选择器重新选择导出目录');
+    }
+    final folder = _safeName(jobs.first.drama.title);
+    final show = documentDirectory
+        ? null
+        : Directory(path.join(destination, folder));
+    if (show != null) await show.create(recursive: true);
     var exported = 0;
     var skipped = 0;
     for (var i = 0; i < jobs.length; i++) {
@@ -199,18 +204,23 @@ extension MediaFolderExportOperations on MediaLibrary {
           : sourceExtension.isEmpty
           ? '.mp4'
           : sourceExtension;
-      final target = File(
-        path.join(
-          show.path,
-          '第 ${job.episode.number.toString().padLeft(2, '0')} 集$extension',
-        ),
-      );
-      if (await target.exists()) {
+      final name =
+          '第 ${job.episode.number.toString().padLeft(2, '0')} 集$extension';
+      final target = show == null ? null : File(path.join(show.path, name));
+      final exists = documentDirectory
+          ? await exportDocumentExists(
+              directory: destination,
+              folder: folder,
+              name: name,
+            )
+          : await target!.exists();
+      if (exists) {
         skipped++;
         progress = (i + 1) / jobs.length;
         notifyListeners();
         continue;
       }
+      var source = plan.url;
       if (playlist) {
         final intermediate = path.join(temporary.path, 'export-$i.mkv');
         final input = <String>[
@@ -240,12 +250,23 @@ extension MediaFolderExportOperations on MediaLibrary {
           intermediate,
         ]);
         _check();
-        await File(intermediate).copy(target.path);
-        await File(intermediate).delete();
-      } else {
-        await File(plan.url).copy(target.path);
+        source = intermediate;
       }
-      exported++;
+      _check();
+      final copied = documentDirectory
+          ? await copyExportDocument(
+              directory: destination,
+              folder: folder,
+              name: name,
+              source: source,
+            )
+          : await File(source).copy(target!.path).then((_) => true);
+      if (playlist) await File(source).delete();
+      if (copied) {
+        exported++;
+      } else {
+        skipped++;
+      }
       progress = (i + 1) / jobs.length;
       notifyListeners();
     }

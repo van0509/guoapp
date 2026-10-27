@@ -19,6 +19,16 @@ JavaScript reference: jackotom/hongguo-drama
 Go port reference: limbia/guoapp
 96d3a6407ade99be5b8fd2ce18206c66bda2d69a.
 
+Anonymous playback registration and inline-model recovery reference:
+jackotom/hongguo-drama 9eb1aaa532fab6c1ae2445853d15f0667a7ecfe4,
+src/native/playback-device.js and src/native/app-source.js.
+The registration protocol and ttEncrypt originate from
+tsukiyo-zero/hongguoTV 388931852ddc614db8b00775a3dc54c5ede6307f,
+kotlin-tv/core/src/main/kotlin/com/hongguotv/core/DeviceRegister.kt,
+itself adapted from charlie901208/HGTV feat/phone-login (GPL-3.0-only).
+Local registration changes: Go crypto/gzip, shared in-memory identity,
+cancellation and bounded transport; no retained tokens or cookies.
+
 Local changes: request preparation, F13 rolling state, identity generation,
 bounded transport, source fallback, media variants and diagnostics.
 

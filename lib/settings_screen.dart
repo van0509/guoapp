@@ -778,13 +778,11 @@ class _StorageScreenState extends State<StorageScreen>
   Map<String, dynamic>? _info;
   String? _error;
   bool _busy = false;
-  bool _access = true;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _refresh();
-    _loadAccess();
   }
 
   @override
@@ -795,12 +793,7 @@ class _StorageScreenState extends State<StorageScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _loadAccess();
-  }
-
-  Future<void> _loadAccess() async {
-    final access = await hasAllFilesAccess();
-    if (mounted && access != _access) setState(() => _access = access);
+    if (state == AppLifecycleState.resumed) _refresh();
   }
 
   Future<void> _refresh() async {
@@ -887,16 +880,14 @@ class _StorageScreenState extends State<StorageScreen>
 
   Future<void> _pickExportDirectory() async {
     if (_busy) return;
-    final directory = await FilePicker.getDirectoryPath(dialogTitle: '选择导出目录');
-    if (directory == null || !mounted) return;
     try {
+      final directory = await pickExportDirectory();
+      if (directory == null || !mounted) return;
       await widget.store.setExportDirectory(directory);
+      if (mounted) setState(() => _error = null);
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
-      return;
     }
-    if (mounted) setState(() {});
-    if (!await hasAllFilesAccess()) await ensureStorageAccess(context);
   }
 
   @override
@@ -948,31 +939,16 @@ class _StorageScreenState extends State<StorageScreen>
               ListTile(
                 title: const Text('导出目录'),
                 subtitle: Text(
-                  widget.store.exportDirectory.isEmpty
-                      ? '未设置 · 导出时选择并记住'
-                      : widget.store.exportDirectory,
+                  exportDirectoryLabel(widget.store.exportDirectory),
                 ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: _busy ? null : _pickExportDirectory,
               ),
-              if (Platform.isAndroid) ...[
-                const Divider(),
-                ListTile(
-                  title: const Text('所有文件访问权限'),
-                  subtitle: Text(
-                    _access ? '已授权 · 可导出到应用目录外的文件夹' : '未授权 · 导出到应用目录外需要授权',
-                  ),
-                  trailing: _access
-                      ? const Icon(Icons.verified_outlined)
-                      : const Text('去授权'),
-                  onTap: _access
-                      ? null
-                      : () async {
-                          await ensureStorageAccess(context);
-                          await _loadAccess();
-                        },
+              if (Platform.isAndroid)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Text('下载保存在应用目录；导出时只访问通过系统选择器选定的文件夹。'),
                 ),
-              ],
               if (widget.store.profile.admin)
                 FilledButton.icon(
                   onPressed: _busy ? null : _move,

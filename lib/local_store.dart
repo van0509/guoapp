@@ -287,8 +287,6 @@ class LocalStore extends ChangeNotifier {
     return value ?? '';
   }
 
-  bool get storagePromptShown => _bool('storagePromptShown') ?? false;
-
   bool get liveActivated =>
       allSourcesEnabled || (_bool('liveActivated') ?? false);
   bool get canShowLive => allSourcesEnabled || liveActivated;
@@ -507,8 +505,6 @@ class LocalStore extends ChangeNotifier {
 
   Future<void> setExportDirectory(String value) =>
       _setting('exportDirectory', value);
-  Future<void> setStoragePromptShown(bool value) =>
-      _setting('storagePromptShown', value);
 
   Future<void> setPlaybackPreferences(PlaybackPreferences value) {
     PlaybackPreferences.fromJson(value.toJson());

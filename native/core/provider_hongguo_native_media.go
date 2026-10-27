@@ -16,25 +16,33 @@ func (downloader *Downloader) resolveHongguoAppMedia(ctx context.Context, videoI
 	if !hongguoNumericID.MatchString(videoID) {
 		return providerMedia{}, errors.New("红果视频 ID 无效")
 	}
-	media, signedErr := downloader.resolveHongguoSignedMedia(ctx, videoID)
+	media, signedErr := downloader.resolveHongguoRegisteredMedia(ctx, videoID)
 	if signedErr == nil {
-		downloader.recordDiagnostic(diagnosticEvent{Event: "hongguo.playback.signed_resolved", Level: "info", Source: sourceHongguo, RequestedQuality: media.Quality})
+		downloader.recordDiagnostic(diagnosticEvent{Event: "hongguo.playback.registered_resolved", Level: "info", Source: sourceHongguo, RequestedQuality: media.Quality})
 		return media, nil
 	}
 	if err := ctx.Err(); err != nil {
 		return providerMedia{}, err
 	}
-	downloader.recordDiagnostic(diagnosticEvent{Event: "hongguo.playback.signed_failed", Level: "warning", Source: sourceHongguo, Message: publicError(signedErr).Error()})
+	downloader.recordDiagnostic(diagnosticEvent{Event: "hongguo.playback.registered_failed", Level: "warning", Source: sourceHongguo, Message: publicError(signedErr).Error()})
 	legacyCtx, cancel := context.WithTimeout(ctx, 12*time.Second)
 	defer cancel()
 	media, legacyErr := downloader.resolveHongguoLegacyAppMedia(legacyCtx, videoID)
 	if legacyErr == nil {
 		return media, nil
 	}
-	return providerMedia{}, fmt.Errorf("新版取流：%v；兼容取流：%w", publicError(signedErr), legacyErr)
+	return providerMedia{}, fmt.Errorf("匿名设备取流：%v；兼容取流：%w", publicError(signedErr), legacyErr)
 }
 
 func (downloader *Downloader) resolveHongguoLegacyAppMedia(ctx context.Context, videoID string) (providerMedia, error) {
+	identity, err := downloader.hongguoPlaybackDevice(ctx)
+	if err != nil {
+		identity, err = downloader.hongguoPlaybackDeviceSession(ctx, true)
+		if err != nil {
+			return providerMedia{}, err
+		}
+	}
+	ctx = context.WithValue(ctx, hongguoPlaybackIdentityKey{}, identity)
 	payload := map[string]any{
 		"video_id": videoID, "content_type": 1,
 		"biz_param": map[string]any{"need_all_video_definition": true, "video_platform": 3},
@@ -105,6 +113,9 @@ func (downloader *Downloader) resolveHongguoPreloadMedia(ctx context.Context, vi
 	model, err := hongguoVideoModel(entry)
 	if err != nil {
 		return providerMedia{}, err
+	}
+	if len(hongguoFallbackRows(model["video_list"])) > 0 {
+		return selectHongguoAppMedia(model)
 	}
 	if fallback, fallbackErr := hongguoFallbackAPI(model); fallbackErr == nil {
 		data, err := downloader.fetchHongguoFallbackVideoData(ctx, fallback)
