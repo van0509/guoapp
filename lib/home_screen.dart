@@ -2064,12 +2064,22 @@ class _AboutDialogState extends State<_AboutDialog> {
                 ],
               ],
               const SizedBox(height: 12),
-              Align(
-                alignment: AlignmentDirectional.centerEnd,
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('关闭'),
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: () => showLicensePage(
+                      context: context,
+                      applicationName: appEditionName(widget.store.fullMode),
+                      applicationVersion: AppLayout.versionOf(context),
+                    ),
+                    child: const Text('开源许可'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('关闭'),
+                  ),
+                ],
               ),
             ],
           ),

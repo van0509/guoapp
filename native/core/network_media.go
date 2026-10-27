@@ -26,6 +26,10 @@ type huangguoPreviewSession struct {
 func mediaRequestHeaders(request *http.Request, referer string) {
 	request.Header.Set("User-Agent", userAgent)
 	request.Header.Set("Referer", referer)
+	if referer == "" {
+		request.Header.Del("Referer")
+		request.Header.Del("Origin")
+	}
 	request.Header.Set("Accept", "*/*")
 	request.Header.Set("Accept-Language", "zh-CN,zh;q=0.9")
 	request.Header.Set("Sec-Fetch-Mode", "cors")

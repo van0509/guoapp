@@ -14,6 +14,7 @@ import 'app_orientation.dart';
 import 'app_theme.dart';
 import 'error_boundary.dart';
 import 'home_screen.dart';
+import 'hongguo_licenses.dart';
 import 'launcher_icon.dart';
 import 'local_store.dart';
 import 'profiles_screen.dart';
@@ -39,6 +40,7 @@ Future<void> main(List<String> arguments) async {
   }
   MediaKit.ensureInitialized();
   VideoEnhancementAssets.registerLicenses();
+  registerHongguoLicenses();
   if (Platform.isWindows && arguments.firstOrNull == '--package-smoke') {
     await runPackageSmoke(arguments);
     return;
